@@ -2,3 +2,5 @@
 logs*.txt
 *.ipynb
 *.py
+.env
+*.csv
