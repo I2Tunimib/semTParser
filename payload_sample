@@ -1,0 +1,207 @@
+{
+  "tableInstance": {
+    "id": "123",
+    "idDataset": "4",
+    "name": "test_table-2025-06-25_08-43",
+    "nCols": 4,
+    "nRows": 9,
+    "nCells": 36,
+    "nCellsReconciliated": 18,
+    "lastModifiedDate": "2025-06-25T10:51:22.950Z",
+    "minMetaScore": 0.922,
+    "maxMetaScore": 100
+  },
+  "columns": {
+    "byId": {
+      "Point of Interest": {
+        "id": "Point of Interest",
+        "label": "Point of Interest",
+        "status": "reconciliated",
+        "context": {
+          "georss": {
+            "uri": "http://www.google.com/maps/place/",
+            "total": 9,
+            "reconciliated": 9
+          }
+        },
+        "metadata": [
+          {
+            "id": "None:",
+            "match": true,
+            "score": 0,
+            "name": {
+              "value": "",
+              "uri": ""
+            },
+            "entity": [
+              {
+                "id": "None:",
+                "name": {
+                  "value": {
+                    "value": "",
+                    "uri": ""
+                  },
+                  "uri": ""
+                },
+                "score": 0,
+                "match": true,
+                "type": []
+              }
+            ]
+          }
+        ],
+        "annotationMeta": {
+          "annotated": true,
+          "match": {
+            "value": true,
+            "reason": "reconciliator"
+          },
+          "lowestScore": 0.922,
+          "highestScore": 0.98
+        }
+      },
+      "Place": {
+        "id": "Place",
+        "label": "Place",
+        "status": "reconciliated",
+        "context": {
+          "georss": {
+            "uri": "http://www.google.com/maps/place/",
+            "total": 9,
+            "reconciliated": 9
+          }
+        },
+        "metadata": [
+          {
+            "id": "None:",
+            "match": true,
+            "score": 0,
+            "name": {
+              "value": "",
+              "uri": ""
+            },
+            "entity": [
+              {
+                "id": "wd:Q174782",
+                "name": {
+                  "value": "square",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": []
+              },
+              {
+                "id": "wd:Q535663",
+                "name": {
+                  "value": "Placé",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q484170",
+                    "name": "commune of France"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q2221906",
+                "name": {
+                  "value": "geographic location",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q96253971",
+                    "name": "type of property"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q5482205",
+                "name": {
+                  "value": "Francis Place",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q5",
+                    "name": "human"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q7200203",
+                "name": {
+                  "value": "Place",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q17343829",
+                    "name": "unincorporated community in the United States"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q7200212",
+                "name": {
+                  "value": "Place",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q101352",
+                    "name": "family name"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q17334923",
+                "name": {
+                  "value": "physical location",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q4373292",
+                    "name": "physical property"
+                  }
+                ]
+              },
+              {
+                "id": "wd:Q29468697",
+                "name": {
+                  "value": "r/place",
+                  "uri": ""
+                },
+                "score": 100,
+                "match": false,
+                "type": [
+                  {
+                    "id": "Q28464970",
+                    "name": "subreddit"
+                  },
+                  {
+                    "id": "Q21076217",
+                    "name": "art project"
+                  },
+                  {
+                    "id": "Q1388421",
+                    "name": "social experiment"
+                  },
+                  {
+                    "id": "Q29063418",
+                    "name": "April Fools" Day joke"}, {"id": "Q104418497", "name": "online event"}, {"id": "Q15275719", "name": "recurring event"}]}, {"id": "wd:Q63140752", "name": {"value": "Placé", "uri": ""}, "score": 100, "match": false, "type": [{"id": "Q101352", "name": "family name"}]}, {"id": "wd:Q98929991", "name": {"value": "place", "uri": ""}, "score": 100, "match": false, "type": []}, {"id": "wd:Q156353", "name": {"value": "Placer County", "uri": ""}, "score": 91, "match": false, "type": [{"id": "Q13212489", "name": "county of California"}]}, {"id": "wd:Q923484", "name": {"value": "Placey", "uri": ""}, "score": 91, "match": false, "type": [{"id": "Q484170", "name": "commune of France"}]}, {"id": "wd:Q486972", "name": {"value": "human settlement", "uri": ""}, "score": 89, "match": false, "type": [{"id": "Q104086571", "name": "first-order class"}]}, {"id": "wd:Q269829", "name": {"value": "placebo", "uri": ""}, "score": 83, "match": false, "type": [{"id": "Q367359", "name": "scientific control"}, {"id": "Q12140", "name": "medication"}, {"id": "Q179661", "name": "medical treatment"}]}, {"id": "wd:Q484839", "name": {"value": "Placebo", "uri": ""}, "score": 83, "match": false, "type": [{"id": "Q215380", "name": "musical group"}]}, {"id": "wd:Q612227", "name": {"value": "BC Place", "uri": ""}, "score": 77, "match": false, "type": [{"id": "Q483110", "name": "stadium"}]}, {"id": "wd:Q1212935", "name": {"value": "placenta", "uri": ""}, "score": 77, "match": false, "type": [{"id": "Q712378", "name": "organ"}, {"id": "Q112826905", "name": "class of anatomical entity"}]}, {"id": "wd:Q7200288", "name": {"value": "Placenta", "uri": ""}, "score": 77, "match": false, "type": [{"id": "Q5633421", "name": "scientific journal"}, {"id": "Q16024164", "name": "medical journal"}]}, {"id": "wd:Q25833", "name": {"value": "placentals", "uri": ""}, "score": 71, "match": false, "type": [{"id": "Q713623", "name": "clade"}]}, {"id": "wd:Q485762", "name": {"value": "toponymy", "uri": ""}, "score": 71, "match": false, "type": [{"id": "Q1047113", "name": "field of study"}]}, {"id": "wd:Q628858", "name": {"value": "workplace", "uri": ""}, "score": 71, "match": false, "type": []}, {"id": "wd:Q2607939", "name": {"value": "Placentia", "uri": ""}, "score": 71, "match": false, "type": [{"id": "Q44529188", "name": "town of Newfoundland and Labrador"}]}, {"id": "wd:Q1322263", "name": {"value": "place of birth", "uri": ""}, "score": 67, "match": false, "type": []}, {"id": "wd:Q7884789", "name": {"value": "toponym", "uri": ""}, "score": 67, "match": false, "type": [{"id": "Q134599141", "name": "type of name"}]}, {"id": "wd:Q18658526", "name": {"value": "place of death", "uri": ""}, "score": 67, "match": false, "type": []}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "Foundation Date", "label": "Foundation Date", "status": "empty", "context": {}, "metadata": []}, "Owner": {"id": "Owner", "label": "Owner", "status": "empty", "context": {}, "metadata": []}}, "allIds": ["Point of Interest", "Place", "Foundation Date", "Owner"]}, "rows": {"byId": {"r0": {"id": "r0", "cells": {"Point of Interest": {"id": "r0$Point of Interest", "label": "John F. Kennedy Presidential Library and Museum", "metadata": [{"id": "wdA:Q2007919", "name": {"value": {"value": "John F. Kennedy Presidential Library and Museum", "uri": ""}, "uri": ""}, "feature": [], "score": 0.98, "match": true, "type": [{"id": "Q33506", "name": "museum"}, {"id": "Q7075", "name": "library"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.98, "highestScore": 0.98}}, "Place": {"id": "r0$Place", "label": "Columbia Point", "metadata": [{"id": "wd:Q1112511", "name": {"value": "Columbia Point", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q123705", "name": "neighborhood"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r0$Foundation Date", "label": "1979-01-01", "metadata": []}, "Owner": {"id": "r0$Owner", "label": "National Archives and Records Administration", "metadata": []}}}, "r1": {"id": "r1", "cells": {"Point of Interest": {"id": "r1$Point of Interest", "label": "Petrie Museum of Egyptian Archaeology", "metadata": [{"id": "wdA:Q2002512", "name": {"value": {"value": "Petrie Museum of Egyptian Archaeology", "uri": ""}, "uri": ""}, "feature": [], "score": 0.972, "match": true, "type": [{"id": "Q3329412", "name": "archaeological museum"}, {"id": "Q866133", "name": "university museum"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.972, "highestScore": 0.972}}, "Place": {"id": "r1$Place", "label": "London", "metadata": [{"id": "wd:Q84", "name": {"value": "London", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q200250", "name": "metropolis"}, {"id": "Q1066984", "name": "financial center"}, {"id": "Q515", "name": "city"}, {"id": "Q208511", "name": "global city"}, {"id": "Q174844", "name": "megacity"}, {"id": "Q51929311", "name": "largest city"}, {"id": "Q108178728", "name": "national capital"}, {"id": "Q2221906", "name": "geographic location"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r1$Foundation Date", "label": "1892-01-01", "metadata": []}, "Owner": {"id": "r1$Owner", "label": "University College London", "metadata": []}}}, "r2": {"id": "r2", "cells": {"Point of Interest": {"id": "r2$Point of Interest", "label": "Helsinki City Museum", "metadata": [{"id": "wdA:Q2031357", "name": {"value": {"value": "Helsinki City Museum", "uri": ""}, "uri": ""}, "feature": [], "score": 0.971, "match": true, "type": [{"id": "Q33506", "name": "museum"}, {"id": "Q17105874", "name": "cultural history museum"}, {"id": "Q2327632", "name": "city museum"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.971, "highestScore": 0.971}}, "Place": {"id": "r2$Place", "label": "Kruununhaka", "metadata": [{"id": "wd:Q1772186", "name": {"value": "Kruununhaka", "uri": ""}, "feature": [], "score": 100, "match": true, "type": [{"id": "Q15715406", "name": "neighbourhood of Helsinki"}, {"id": "Q79696253", "name": "subdivision of a neighborhood of Helsinki"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r2$Foundation Date", "label": "1911-01-01", "metadata": []}, "Owner": {"id": "r2$Owner", "label": "Helsinki", "metadata": []}}}, "r3": {"id": "r3", "cells": {"Point of Interest": {"id": "r3$Point of Interest", "label": "Castle Caputh", "metadata": [{"id": "wdA:Q2240519", "name": {"value": {"value": "Castle Caputh", "uri": ""}, "uri": ""}, "feature": [], "score": 0.922, "match": true, "type": [{"id": "Q751876", "name": "château"}, {"id": "Q33506", "name": "museum"}, {"id": "Q1436181", "name": "maison de plaisance"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.922, "highestScore": 0.922}}, "Place": {"id": "r3$Place", "label": "Caputh", "metadata": [{"id": "wd:Q464344", "name": {"value": "Caputh", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q253019", "name": "Ortsteil"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r3$Foundation Date", "label": "1662-01-01", "metadata": []}, "Owner": {"id": "r3$Owner", "label": "Prussian Palaces and Gardens Foundation Berlin-Brandenburg", "metadata": []}}}, "r4": {"id": "r4", "cells": {"Point of Interest": {"id": "r4$Point of Interest", "label": "Nyköping Castle", "metadata": [{"id": "wdA:Q1779071", "name": {"value": {"value": "Nyköping Castle", "uri": ""}, "uri": ""}, "feature": [], "score": 0.964, "match": true, "type": [{"id": "Q23413", "name": "castle"}, {"id": "Q1497375", "name": "architectural ensemble"}, {"id": "Q570116", "name": "tourist attraction"}, {"id": "Q33506", "name": "museum"}, {"id": "Q2065736", "name": "cultural property"}, {"id": "Q96211395", "name": "heritage site in Sweden"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.964, "highestScore": 0.964}}, "Place": {"id": "r4$Place", "label": "Nyköping", "metadata": [{"id": "wd:Q54356", "name": {"value": "Nyköping", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q12813115", "name": "urban area in Sweden"}, {"id": "Q707813", "name": "Hanseatic city"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r4$Foundation Date", "label": "1200-01-01", "metadata": []}, "Owner": {"id": "r4$Owner", "label": "National Property Board", "metadata": []}}}, "r5": {"id": "r5", "cells": {"Point of Interest": {"id": "r5$Point of Interest", "label": "World of Coca-Cola", "metadata": [{"id": "wdA:Q2201410", "name": {"value": {"value": "World of Coca-Cola", "uri": ""}, "uri": ""}, "feature": [], "score": 0.942, "match": true, "type": [{"id": "Q33506", "name": "museum"}, {"id": "Q24699794", "name": "museum building"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.942, "highestScore": 0.942}}, "Place": {"id": "r5$Place", "label": "Atlanta", "metadata": [{"id": "wd:Q97", "name": {"value": "Atlantic Ocean", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q9430", "name": "ocean"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r5$Foundation Date", "label": "1990-01-01", "metadata": []}, "Owner": {"id": "r5$Owner", "label": "The Coca-Cola Company", "metadata": []}}}, "r6": {"id": "r6", "cells": {"Point of Interest": {"id": "r6$Point of Interest", "label": "Zeeuws Museum", "metadata": [{"id": "wdA:Q2153365", "name": {"value": {"value": "Zeeuws Museum", "uri": ""}, "uri": ""}, "feature": [], "score": 0.927, "match": true, "type": [{"id": "Q33506", "name": "museum"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.927, "highestScore": 0.927}}, "Place": {"id": "r6$Place", "label": "Middelburg", "metadata": [{"id": "wd:Q10076", "name": {"value": "Middelburg", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q2039348", "name": "municipality of the Netherlands"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r6$Foundation Date", "label": "1972-01-01", "metadata": []}, "Owner": {"id": "r6$Owner", "label": "Rijksmuseum", "metadata": []}}}, "r7": {"id": "r7", "cells": {"Point of Interest": {"id": "r7$Point of Interest", "label": "Horniman Museum", "metadata": [{"id": "wdA:Q1628487", "name": {"value": {"value": "Horniman Museum", "uri": ""}, "uri": ""}, "feature": [], "score": 0.929, "match": true, "type": [{"id": "Q33506", "name": "museum"}, {"id": "Q115154402", "name": "independent museum"}, {"id": "Q24699794", "name": "museum building"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.929, "highestScore": 0.929}}, "Place": {"id": "r7$Place", "label": "Forest Hill", "metadata": [{"id": "wd:Q26492", "name": {"value": "Forest Hill", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q1093829", "name": "city in the United States"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r7$Foundation Date", "label": "1901-01-01", "metadata": []}, "Owner": {"id": "r7$Owner", "label": "Department for Digital, Culture, Media and Sport", "metadata": []}}}, "r8": {"id": "r8", "cells": {"Point of Interest": {"id": "r8$Point of Interest", "label": "Nobel Prize Museum", "metadata": [{"id": "wdA:Q1968711", "name": {"value": {"value": "Nobel Prize Museum", "uri": ""}, "uri": ""}, "feature": [], "score": 0.96, "match": true, "type": [{"id": "Q33506", "name": "museum"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 0.96, "highestScore": 0.96}}, "Place": {"id": "r8$Place", "label": "Gamla stan", "metadata": [{"id": "wd:Q579854", "name": {"value": "Gamla stan", "uri": ""}, "feature": [], "score": 100, "match": false, "type": [{"id": "Q2983893", "name": "quarter"}]}], "annotationMeta": {"annotated": true, "match": {"value": true, "reason": "reconciliator"}, "lowestScore": 100, "highestScore": 100}}, "Foundation Date": {"id": "r8$Foundation Date", "label": "2001-04-01", "metadata": []}, "Owner": {"id": "r8$Owner", "label": "Nobel Foundation", "metadata": []}}}}, "allIds": ["r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"]}}

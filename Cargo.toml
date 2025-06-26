@@ -1,0 +1,21 @@
+[package]
+name = "semTParser"
+version = "0.1.0"
+edition = "2021"
+default-run = "main"
+
+[dependencies]
+rev_lines = "0.3"
+chrono = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.17.0", features = ["v4"] }   # For generating cell IDs
+dotenv = "0.15.0"
+clap = { version = "4.0", features = ["derive"] }
+[[bin]]
+name = "main"
+path = "src/main.rs"
+
+[[bin]]
+name = "test"
+path = "src/test_notebook.rs"
