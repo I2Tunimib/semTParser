@@ -13,9 +13,7 @@ struct Notebook {
 }
 
 pub struct Args {
-    pub log_file: String,
     pub table_file: String,
-    pub format: String,
 }
 
 #[derive(Serialize)]
@@ -252,9 +250,4 @@ pub fn create_notebook(
     std::fs::write(&path, json)?;
 
     Ok(path)
-}
-fn main() {
-    println!(
-        "This is a test notebook module. Use the create_notebook function to generate a notebook."
-    );
 }

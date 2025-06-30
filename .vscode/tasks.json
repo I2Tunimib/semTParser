@@ -1,0 +1,77 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run semTParser - Python format",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--",
+        "-l",
+        "./logs.txt",
+        "-t",
+        "./table_1.csv",
+        "-f",
+        "python"
+      ],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "isBackground": false
+    },
+    {
+      "label": "Run semTParser - Notebook format",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--",
+        "-l",
+        "./logs.txt",
+        "-t",
+        "./table_1.csv",
+        "-f",
+        "notebook"
+      ],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "isBackground": false
+    },
+    {
+      "label": "Run semTParser - Old logs Python",
+      "type": "shell",
+      "command": "cargo",
+      "args": [
+        "run",
+        "--",
+        "-l",
+        "./logs_old.txt",
+        "-t",
+        "./table_1.csv",
+        "-f",
+        "python"
+      ],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "isBackground": false
+    },
+    {
+      "label": "Run semTParser - Default args",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["run"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "isBackground": false
+    },
+    {
+      "label": "Build semTParser",
+      "type": "shell",
+      "command": "cargo",
+      "args": ["build"],
+      "group": "build",
+      "problemMatcher": ["$rustc"],
+      "isBackground": false
+    }
+  ]
+}
