@@ -134,14 +134,14 @@ pub fn get_base_extension_operation(
 pub fn get_base_reconciliation_operation(
     column_name: &str,
     additional_columns: Option<Vec<String>>,
-    reconciliator_id: &str,
+    reconciler_id: &str,
 ) -> String {
     let additional_columns_str = match additional_columns {
         Some(columns) if !columns.is_empty() => columns.join(", "),
         _ => String::from(""),
     };
     let formatted_code = BASE_RECONCILE_OPERATION
-        .replace("__RECONCILIATOR_ID__", reconciliator_id) // Replace with actual reconciliator ID
+        .replace("__RECONCILIATOR_ID__", reconciler_id) // Replace with actual reconciliator ID
         .replace("__COLUMN_NAME__", column_name)
         .replace("__OPTIONAL_COLUMNS__", &additional_columns_str);
     formatted_code
