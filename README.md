@@ -9,10 +9,11 @@ semTParser analyzes log files to extract table operations and automatically gene
 ## Features
 
 - **Log Parsing**: Analyzes semT log files to extract operations between GET_TABLE and SAVE_TABLE entries
-- **Operation Processing**: Handles RECONCILIATION and EXTENSION operations
-- **Python Code Generation**: Automatically creates Python scripts with table loading and operation execution
+- **Operation Processing**: Handles RECONCILIATION and EXTENSION operations with detailed parsing of additional data
+- **Python Code Generation**: Automatically creates Python scripts with SemT_py package integration for table operations
 - **CSV Table Support**: Works with CSV files as input tables
 - **Timestamped Output**: Generates uniquely named output files with timestamps
+- **Jupyter Notebook Support**: Includes capabilities for generating Jupyter notebooks for data operations _(WIP)_
 
 ## Installation
 
@@ -34,7 +35,7 @@ cargo build --release
 ### Basic Usage
 
 ```bash
-cargo run --log-file ./logs.txt --table-file ./table_1.csv
+cargo run -- --log-file ./logs.txt --table-file ./table_1.csv
 ```
 
 ### Command Line Options
@@ -45,31 +46,41 @@ cargo run --log-file ./logs.txt --table-file ./table_1.csv
 ### Example
 
 ```bash
-# Parse logs.txt and process table_1.csv
+# Parse logs.txt and process table_1.csv (using defaults)
 cargo run
 
 # Use custom files
-cargo run -- -l ./my_logs.txt -t ./my_table.csv
+cargo run -- --log-file ./my_logs.txt --table-file ./my_table.csv
 ```
 
 ## How It Works
 
 1. **Log Analysis**: The tool reads the specified log file in reverse to find the most recent GET_TABLE operation
 2. **Operation Extraction**: Extracts all operations between the last GET_TABLE and the first SAVE_TABLE entry
-3. **Processing**: Parses and categorizes operations (RECONCILIATION, EXTENSION, etc.)
+3. **Processing**: Parses and categorizes operations (RECONCILIATION, EXTENSION, etc.) with detailed JSON parsing of additional data
 4. **Code Generation**: Creates a timestamped Python file with:
-   - Table loading code for the specified CSV file
-   - Generated operations based on the parsed logs
-   - Appropriate function calls for each operation type
+   - Integration with SemT_py package for API interactions
+   - Table loading code for the specified CSV file using pandas
+   - Reconciliation operations with specified reconcilers and columns
+   - Extension operations with properties and extenders
+   - Authentication and token management setup
+   - Dataset and table management functionality
 
 ## Generated Output
 
 The tool generates Python files with names like `base_file_2025-06-26_08-33.py` containing:
 
-- CSV table loading functionality
-- Reconciliation operations with specified reconcilers and columns
-- Extension operations with properties and extenders
-- Proper error handling and logging
+- **SemT_py Integration**: Imports and setup for SemT_py package components including:
+  - TokenManager for authentication
+  - ExtensionManager for data extension operations
+  - ReconciliationManager for data reconciliation
+  - DatasetManager for dataset operations
+  - Utility functions
+- **CSV Table Loading**: Uses pandas for data manipulation and loading
+- **API Configuration**: Base URL, authentication, and API endpoint setup
+- **Operation Execution**: Reconciliation operations with specified reconcilers and columns
+- **Extension Processing**: Extension operations with properties and extenders parsed from JSON
+- **Dataset Management**: Functions to add tables to datasets with proper naming
 
 ## Dependencies
 
@@ -80,11 +91,96 @@ The tool generates Python files with names like `base_file_2025-06-26_08-33.py` 
 - `dotenv`: For environment variable support
 - `clap`: For command-line argument parsing
 
+### External Dependencies
+
+The generated Python code requires:
+
+- `SemT_py`: Python package for semantic table operations
+- `pandas`: For data manipulation and CSV handling
+
 ## Configuration
 
 The tool supports environment variables through `.env` files. Place a `.env` file in the project root for custom configuration.
 
+### Setting up the .env file
+
+Create a `.env` file in the project root directory with the following configuration:
+
+```env
+# API Configuration
+BASE_URL=http://localhost:3003
+API_URL=http://localhost:3003/api
+
+# Authentication credentials
+USERNAME=your-email@example.com
+PASSWORD=your-password
+
+# Optional: Logging level
+RUST_LOG=info
+```
+
+#### Configuration Parameters
+
+- **BASE_URL**: The base URL of your semT API server (default: `http://localhost:3003`)
+- **API_URL**: The full API endpoint URL (default: `http://localhost:3003/api`)
+- **USERNAME**: Your semT account username/email address
+- **PASSWORD**: Your semT account password
+- **RUST_LOG**: Logging level for the application (`debug`, `info`, `warn`, `error`)
+
+#### Example .env file
+
+```env
+BASE_URL=http://localhost:3003
+API_URL=http://localhost:3003/api
+USERNAME=agazzi.ruben99@gmail.com
+PASSWORD=your-secure-password
+RUST_LOG=debug
+```
+
+**Note**: Never commit your `.env` file to version control as it contains sensitive credentials. The `.env` file should be added to your `.gitignore`.
+
+## Supported Operations
+
+The tool currently processes the following log operation types:
+
+### RECONCILIATION Operations
+
+- Extracts reconciler service IDs (e.g., `wikidataOpenRefine`, `wikidataAlligator`)
+- Processes column names and additional reconciliation data
+- Generates Python code with appropriate reconciliation manager calls
+
+### EXTENSION Operations
+
+- Parses extender service IDs (e.g., `wikidataPropertySPARQL`)
+- Extracts property specifications from additional data
+- Creates extension operations with proper property handling
+
+### Log Format
+
+Expected log format:
+
+```
+[timestamp] -| OpType: OPERATION_TYPE -| DatasetId: X -| TableId: Y -| ColumnName: column -| Service: service_id -| AdditionalData: {json_data}
+```
+
 ## Development
+
+### Project Structure
+
+```
+src/
+├── main.rs              # Main application entry point
+├── operations.rs        # Log parsing and operation processing
+├── python_helpers.rs    # Python code generation utilities
+└── test_notebook.rs     # Jupyter notebook generation (test binary)
+```
+
+### Available Binaries
+
+The project includes multiple binary targets:
+
+- `main`: Primary application for parsing logs and generating Python code
+- `test`: Utility for generating Jupyter notebooks
 
 ### Running Tests
 

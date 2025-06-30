@@ -4,3 +4,4 @@ logs*.txt
 *.py
 .env
 *.csv
+payload_sample.json
