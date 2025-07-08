@@ -27,6 +27,18 @@ dataset_id = "__DATASET_ID__"
 table_name = "__TABLE_NAME__"
 
 df = pd.read_csv('__TABLE_PATH__')
+
+# Delete specified columns if any
+columns_to_delete = [__COLUMNS_TO_DELETE__]
+if columns_to_delete and columns_to_delete != ['']:
+    for col in columns_to_delete:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+            print(f"Deleted column: {col}")
+        else:
+            print(f"Column '{col}' not found in table")
+    print(f"Columns deleted: {[col for col in columns_to_delete if col in df.columns]}")
+
 return_data = dataset_manager.add_table_to_dataset(dataset_id, df ,table_name)
 data_dict = return_data[1]  # The dictionary containing table info
 
@@ -104,7 +116,32 @@ pub fn get_base_dataset_loader(table_path: &str, dataset_id: &str, table_name: &
     let formatted_code = BASE_DATASET_LOAD_DATAFRAME
         .replace("__TABLE_PATH__", table_path)
         .replace("__DATASET_ID__", dataset_id)
-        .replace("__TABLE_NAME__", table_name);
+        .replace("__TABLE_NAME__", table_name)
+        .replace("__COLUMNS_TO_DELETE__", "");
+    formatted_code
+}
+
+pub fn get_base_dataset_loader_with_column_deletion(
+    table_path: &str,
+    dataset_id: &str,
+    table_name: &str,
+    columns_to_delete: Vec<String>,
+) -> String {
+    let columns_to_delete_str = if columns_to_delete.is_empty() {
+        "".to_string()
+    } else {
+        columns_to_delete
+            .iter()
+            .map(|col| format!("'{}'", col))
+            .collect::<Vec<String>>()
+            .join(", ")
+    };
+
+    let formatted_code = BASE_DATASET_LOAD_DATAFRAME
+        .replace("__TABLE_PATH__", table_path)
+        .replace("__DATASET_ID__", dataset_id)
+        .replace("__TABLE_NAME__", table_name)
+        .replace("__COLUMNS_TO_DELETE__", &columns_to_delete_str);
     formatted_code
 }
 

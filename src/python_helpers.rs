@@ -1,8 +1,8 @@
 use crate::code_helper::{
-    get_base_dataset_loader, get_base_extension_operation, get_base_file_loader_code,
-    get_base_reconciliation_operation,
+    get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
+    get_base_extension_operation, get_base_file_loader_code, get_base_reconciliation_operation,
 };
-use crate::operations::parse_json;
+use crate::operations::{parse_deleted_columns, parse_json};
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -25,11 +25,17 @@ pub fn write_table_loader(
     file_path_str: &str,
     table_path_str: &str,
     table_name: &str,
+    deleted_columns: Option<Vec<String>>,
 ) -> Result<(), Error> {
     let table_path = Path::new(table_path_str);
     let file_path = Path::new(file_path_str);
     if table_path.exists() {
-        let formatted_code = get_base_dataset_loader(table_path_str, "4", table_name);
+        let formatted_code = match deleted_columns {
+            Some(cols) if !cols.is_empty() => {
+                get_base_dataset_loader_with_column_deletion(table_path_str, "4", table_name, cols)
+            }
+            _ => get_base_dataset_loader(table_path_str, "4", table_name),
+        };
 
         //write to file
         let mut file = get_file_writer(file_path)?;
@@ -94,7 +100,34 @@ pub fn create_python(
         }
         Err(e) => eprintln!("Error creating base file: {}", e),
     }
-    match write_table_loader(path.as_str(), &args.table_file, table_name.as_str()) {
+    // Debug: Print only operations with DeletedCols
+    operations.iter().for_each(|op| {
+        if let Some(deleted_cols) = op.get("DeletedCols") {
+            println!("Found operation with DeletedCols:");
+            println!("  OpType: {:?}", op.get("OpType"));
+            println!("  DeletedCols: {:?}", deleted_cols);
+            println!(
+                "  Parsed columns: {:?}",
+                parse_deleted_columns(deleted_cols)
+            );
+            println!("  Full operation: {:?}", op);
+            println!("---");
+        }
+    });
+    // Look for deleted columns in SAVE_TABLE operations
+    let deleted_columns = operations
+        .iter()
+        .find(|op| op.get("OpType") == Some(&"SAVE_TABLE".to_string()))
+        .and_then(|op| op.get("DeletedCols"))
+        .map(|deleted_cols_str| parse_deleted_columns(deleted_cols_str))
+        .filter(|cols| !cols.is_empty());
+
+    match write_table_loader(
+        path.as_str(),
+        &args.table_file,
+        table_name.as_str(),
+        deleted_columns,
+    ) {
         Ok(_) => println!("Table loader written successfully."),
         Err(e) => eprintln!("Error writing table loader: {}", e),
     }

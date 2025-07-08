@@ -5,10 +5,10 @@ use uuid::Uuid;
 
 use crate::{
     code_helper::{
-        get_base_dataset_loader, get_base_extension_operation, get_base_file_loader_code,
+        get_base_dataset_loader, get_base_dataset_loader_with_column_deletion, get_base_extension_operation, get_base_file_loader_code,
         get_base_reconciliation_operation,
     },
-    operations::parse_json,
+    operations::{parse_json, parse_deleted_columns},
 };
 
 #[derive(Serialize)]
@@ -59,23 +59,41 @@ pub fn create_notebook(
             metadata: serde_json::json!({}),
             source: get_base_file_loader_code()
                 .lines()
-                .map(|line| line.to_string())
-                .collect(),
-            execution_count: None,
-            outputs: vec![],
-        },
-        // Data loading cell
-        Cell::Code {
-            id: Uuid::new_v4().to_string(),
-            metadata: serde_json::json!({}),
-            source: get_base_dataset_loader(args.table_file.as_str(), "4", table_name.as_str())
-                .lines()
-                .map(|line| line.to_string())
+                .map(|line| format!("{}\n", line))
                 .collect(),
             execution_count: None,
             outputs: vec![],
         },
     ];
+
+    // Look for deleted columns in SAVE_TABLE operations
+    let deleted_columns = operations
+        .iter()
+        .find(|op| op.get("OpType") == Some(&"SAVE_TABLE".to_string()))
+        .and_then(|op| op.get("DeletedCols"))
+        .map(|deleted_cols_str| parse_deleted_columns(deleted_cols_str))
+        .filter(|cols| !cols.is_empty());
+
+    // Data loading cell with optional column deletion
+    let dataset_loader_code = match deleted_columns {
+        Some(ref cols) => {
+            get_base_dataset_loader_with_column_deletion(args.table_file.as_str(), "4", table_name.as_str(), cols.clone())
+        }
+        None => {
+            get_base_dataset_loader(args.table_file.as_str(), "4", table_name.as_str())
+        }
+    };
+
+    cells.push(Cell::Code {
+        id: Uuid::new_v4().to_string(),
+        metadata: serde_json::json!({}),
+        source: dataset_loader_code
+            .lines()
+            .map(|line| format!("{}\n", line))
+            .collect(),
+        execution_count: None,
+        outputs: vec![],
+    });
 
     // Add operation cells
     for operation in operations {
@@ -99,7 +117,7 @@ pub fn create_notebook(
                     metadata: serde_json::json!({}),
                     source: get_base_reconciliation_operation(&col_name, None, reconciler_id)
                         .lines()
-                        .map(|line| line.to_string())
+                        .map(|line| format!("{}\n", line))
                         .collect(),
                     execution_count: None,
                     outputs: vec![],
@@ -133,7 +151,7 @@ pub fn create_notebook(
                     metadata: serde_json::json!({}),
                     source: get_base_extension_operation(&col_name, props, None, extender_id)
                         .lines()
-                        .map(|line| line.to_string())
+                        .map(|line| format!("{}\n", line))
                         .collect(),
                     execution_count: None,
                     outputs: vec![],

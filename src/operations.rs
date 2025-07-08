@@ -13,6 +13,7 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
     let rev_reader = RevLines::new(BufReader::new(file));
     let mut start_line: Option<String> = None;
     let mut end_line: Option<String> = None;
+    let mut result = Vec::new();
 
     for line_result in rev_reader {
         match line_result {
@@ -25,7 +26,8 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
                     if end_line.is_none() {
                         println!("Found SAVE_TABLE line: {}", line);
                         // If we haven't set an end line yet, set it to the current line
-                        end_line = Some(line);
+                        end_line = Some(line.clone());
+                        result.push(line);
                     }
                 }
             }
@@ -44,7 +46,6 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
         None => String::new(), // If no end line is found, we will read until the end of the file
     };
     let content = std::fs::read_to_string(path)?;
-    let mut result = Vec::new();
     let mut found_start = false;
 
     for line in content.lines() {
@@ -70,16 +71,16 @@ pub fn pre_process_operations(
 ) -> Result<Vec<HashMap<String, String>>, Error> {
     let mut operations_arrays = Vec::new();
     for operation in operations {
-        let splitted_operations = operation.split("-|");
+        let splitted_operations = operation.split(" -| ");
         let operations_obj: HashMap<String, String> = splitted_operations
             .filter_map(|s| {
                 let split: Vec<&str> = s.split(":").collect();
                 if split[0].trim() == "AdditionalData" {
                     let json_string = split[1..].join(" : ");
-                    Some(("AdditionalData".to_string(), json_string))
+                    Some(("AdditionalData".to_string(), json_string.trim().to_string()))
                 } else if split.len() == 2 {
                     Some((split[0].trim().to_string(), split[1].trim().to_string()))
-                } else if split.len() == 3 && s.trim().starts_with("[") && s.trim().ends_with("]") {
+                } else if split.len() >= 3 && s.trim().starts_with("[") && s.trim().ends_with("]") {
                     let cleaned_timestamp = s.trim().replace("[", "").replace("]", "").to_string();
                     match DateTime::parse_from_rfc3339(&cleaned_timestamp) {
                         Ok(datetime) => Some(("timestamp".to_string(), datetime.to_rfc3339())),
@@ -93,6 +94,7 @@ pub fn pre_process_operations(
                 }
             })
             .collect();
+
         operations_arrays.push(operations_obj);
         // Process each operation
     }
@@ -179,4 +181,20 @@ pub fn parse_json(json_string: &str) -> Option<Value> {
             None
         }
     }
+}
+
+pub fn parse_deleted_columns(deleted_cols_string: &str) -> Vec<String> {
+    println!(
+        "Parsing deleted columns from string: {}",
+        deleted_cols_string
+    );
+    if deleted_cols_string.is_empty() {
+        return vec![];
+    }
+
+    deleted_cols_string
+        .split("|-|")
+        .map(|col| col.trim().to_string())
+        .filter(|col| !col.is_empty())
+        .collect()
 }
