@@ -23,8 +23,13 @@ utility = Utility(base_url, token_manager=Auth_manager)
 const BASE_DATASET_LOAD_DATAFRAME: &str = r#"
 # Load a dataset into a DataFrame
 import pandas as pd
-dataset_id = "__DATASET_ID__"
-table_name = "__TABLE_NAME__"
+
+def get_input_with_default(prompt, default):
+    user_input = input(f"{prompt} (default: {default}): ").strip()
+    return user_input if user_input else default
+
+dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
+table_name = get_input_with_default("Enter table_name or press Enter to keep default", "__TABLE_NAME__")
 
 df = pd.read_csv('__TABLE_PATH__')
 
@@ -46,6 +51,7 @@ data_dict = return_data[1]  # The dictionary containing table info
 table_id = data_dict['tables'][0]['id']
 # table_id, message, response_data = table_manager.add_table(dataset_id, df, table_name)
 
+table_id = get_input_with_default("Enter table_id or press Enter to keep default", table_id)
 "#;
 
 const BASE_RECONCILE_OPERATION: &str = r#"
@@ -53,45 +59,52 @@ const BASE_RECONCILE_OPERATION: &str = r#"
 reconciliator_id = "__RECONCILIATOR_ID__"
 optional_columns = [__OPTIONAL_COLUMNS__]  # Replace with actual optional columns if needed
 column_name = "__COLUMN_NAME__"
-table_data = dataset_manager.get_table_by_id(dataset_id, table_id)
-reconciled_table, backend_payload = reconciliation_manager.reconcile(
-      table_data,
-      column_name,
-      reconciliator_id,
-      optional_columns
-  )
-payload=backend_payload
+try:
+    table_data = dataset_manager.get_table_by_id(dataset_id, table_id)
+    reconciled_table, backend_payload = reconciliation_manager.reconcile(
+        table_data,
+        column_name,
+        reconciliator_id,
+        optional_columns
+    )
+    payload=backend_payload
 
-successMessage, sentPayload = utility.push_to_backend(
-  dataset_id,
-  table_id,
-  payload,
-  debug=False
-)
+    successMessage, sentPayload = utility.push_to_backend(
+    dataset_id,
+    table_id,
+    payload,
+    debug=False
+    )
 
-print(successMessage)
+    print(successMessage)
+except Exception as e:
+    print(f"An error occurred during reconciliation: {e}")
+    # Handle the exception as needed, e.g., log it or re-raise it
 "#;
 
 const BASE_EXTENSION_OPERATION: &str = r#"
-extended_table, extension_payload = extension_manager.extend_column(
-  table=table_data,
-  column_name="__COLUMN_NAME__",
-  extender_id="reconciledColumnExtWikidata",
-  properties=[
-      __EXTENSION_PROPERTIES__
-  ],
-  other_params={__EXTENSION_PARAMS__},
-)
-payload=backend_payload
+try:
+    extended_table, extension_payload = extension_manager.extend_column(
+    table=table_data,
+    column_name="__COLUMN_NAME__",
+    extender_id="reconciledColumnExtWikidata",
+    properties=[
+        __EXTENSION_PROPERTIES__
+    ],
+    other_params={__EXTENSION_PARAMS__},
+    )
+    payload=backend_payload
 
-successMessage, sentPayload = utility.push_to_backend(
-  dataset_id,
-  table_id,
-  payload,
-  debug=False
-)
+    successMessage, sentPayload = utility.push_to_backend(
+    dataset_id,
+    table_id,
+    payload,
+    debug=False
+    )
 
-print(successMessage)
+    print(successMessage)
+except Exception as e:
+    print(f"An error occurred during extension: {e}")
 "#;
 
 pub fn get_base_file_loader_code() -> String {
