@@ -1,32 +1,39 @@
 const BASE_FILE_CONTENT: &str = r#"
 # This is a base file for the Python helper module.
-# Import necessary classes and functions from the SemT_py package
-from SemT_py.token_manager import TokenManager
-from SemT_py.extension_manager import ExtensionManager
-from SemT_py.reconciliation_manager import ReconciliationManager
-from SemT_py.utils import Utility
-from SemT_py.dataset_manager import DatasetManager
-from SemT_py.modification_manager import ModificationManager
+# Import necessary classes and functions from the semt_py package
+import semt_py
+from semt_py import AuthManager
+from semt_py.extension_manager import ExtensionManager
+from semt_py.reconciliation_manager import ReconciliationManager
+from semt_py.utils import Utility
+from semt_py.dataset_manager import DatasetManager
+from semt_py.table_manager import TableManager
+from semt_py.modification_manager import ModificationManager
 
-base_url = "__BASE_URL__"  # Replace with your base URL
+def get_input_with_default(prompt, default):
+    user_input = input(f"{prompt} (default: {default}): ").strip()
+    return user_input if user_input else default
+
+base_url = get_input_with_default("Enter base URL or press Enter to keep default", "__BASE_URL__")
 username = "__USERNAME__"  # Replace with your username
 password = "__PASSWORD__"  # Replace with your password
-api_url = "__API_URL__"  # Replace with your API URL
-Auth_manager = TokenManager(api_url, username, password)
+api_url = get_input_with_default("Enter API URL or press Enter to keep default", "__API_URL__")
+
+Auth_manager = AuthManager(api_url, username, password)
 token = Auth_manager.get_token()
 reconciliation_manager = ReconciliationManager(base_url, Auth_manager)
 dataset_manager = DatasetManager(base_url, Auth_manager)
+table_manager = TableManager(base_url, Auth_manager)
 extension_manager = ExtensionManager(base_url, token)
-utility = Utility(base_url, token_manager=Auth_manager)
+utility = Utility(base_url, Auth_manager)
 "#;
 
 const BASE_DATASET_LOAD_DATAFRAME: &str = r#"
 # Load a dataset into a DataFrame
 import pandas as pd
 
-def get_input_with_default(prompt, default):
-    user_input = input(f"{prompt} (default: {default}): ").strip()
-    return user_input if user_input else default
+# Note: get_input_with_default is defined in the main file
+# Reusing it here for consistency
 
 dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
 table_name = get_input_with_default("Enter table_name or press Enter to keep default", "__TABLE_NAME__")
@@ -44,12 +51,13 @@ if columns_to_delete and columns_to_delete != ['']:
             print(f"Column '{col}' not found in table")
     print(f"Columns deleted: {[col for col in columns_to_delete if col in df.columns]}")
 
-return_data = dataset_manager.add_table_to_dataset(dataset_id, df ,table_name)
-data_dict = return_data[1]  # The dictionary containing table info
+table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
-# Extract the table ID from the dictionary
-table_id = data_dict['tables'][0]['id']
-# table_id, message, response_data = table_manager.add_table(dataset_id, df, table_name)
+# Extract the table ID
+# Alternative method if above doesn't work:
+# return_data = dataset_manager.add_table_to_dataset(dataset_id, df, table_name)
+# data_dict = return_data[1]  # The dictionary containing table info
+# table_id = data_dict['tables'][0]['id']
 
 table_id = get_input_with_default("Enter table_id or press Enter to keep default", table_id)
 "#;
@@ -60,14 +68,14 @@ reconciliator_id = "__RECONCILIATOR_ID__"
 optional_columns = [__OPTIONAL_COLUMNS__]  # Replace with actual optional columns if needed
 column_name = "__COLUMN_NAME__"
 try:
-    table_data = dataset_manager.get_table_by_id(dataset_id, table_id)
+    table_data = table_manager.get_table(dataset_id, table_id)
     reconciled_table, backend_payload = reconciliation_manager.reconcile(
         table_data,
         column_name,
         reconciliator_id,
         optional_columns
     )
-    payload=backend_payload
+    payload = backend_payload
 
     successMessage, sentPayload = utility.push_to_backend(
     dataset_id,
@@ -84,22 +92,22 @@ except Exception as e:
 
 const BASE_EXTENSION_OPERATION: &str = r#"
 try:
+    table_data = table_manager.get_table(dataset_id, table_id)
+    
     extended_table, extension_payload = extension_manager.extend_column(
-    table=table_data,
-    column_name="__COLUMN_NAME__",
-    extender_id="reconciledColumnExtWikidata",
-    properties=[
-        __EXTENSION_PROPERTIES__
-    ],
-    other_params={__EXTENSION_PARAMS__},
+        table=table_data,
+        column_name="__COLUMN_NAME__",
+        extender_id="__EXTENDER_ID__",
+        properties="__EXTENSION_PROPERTIES__",
+        other_params={__EXTENSION_PARAMS__}
     )
-    payload=backend_payload
+    payload = extension_payload
 
     successMessage, sentPayload = utility.push_to_backend(
-    dataset_id,
-    table_id,
-    payload,
-    debug=False
+        dataset_id,
+        table_id,
+        payload,
+        debug=False
     )
 
     print(successMessage)
@@ -109,7 +117,7 @@ except Exception as e:
 
 pub fn get_base_file_loader_code() -> String {
     let formatted_code = BASE_FILE_CONTENT
-        .replace("__API_URL__", &std::env::var("API_URL").unwrap_or_default())
+        .replace("__API_URL__", &std::env::var("API_URL").unwrap_or("http://localhost:3003/api".to_string()))
         .replace(
             "__USERNAME__",
             &std::env::var("USERNAME").unwrap_or_default(),
@@ -120,7 +128,7 @@ pub fn get_base_file_loader_code() -> String {
         )
         .replace(
             "__BASE_URL__",
-            &std::env::var("BASE_URL").unwrap_or_default(),
+            &std::env::var("BASE_URL").unwrap_or("http://localhost:3003".to_string()),
         );
     formatted_code
 }
@@ -164,11 +172,9 @@ pub fn get_base_extension_operation(
     additional_params: Option<Vec<String>>,
     extender_id: &str,
 ) -> String {
-    let properties_str = properties
-        .iter()
-        .map(|item| format!("'{}'", item))
-        .collect::<Vec<String>>()
-        .join(", ");
+    // Join properties with spaces for the new format (e.g. "P373 P31 P625")
+    let properties_str = properties.join(" ");
+    
     let additional_params_str = match additional_params {
         Some(params) if !params.is_empty() => params.join(", "),
         _ => String::from(""),
