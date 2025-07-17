@@ -21,13 +21,33 @@ semTParser analyzes log files to extract table operations and automatically gene
 
 - Rust (edition 2021 or later)
 - Cargo package manager
+- Python 3.6+
+- pip (Python package installer)
 
 ### Building from Source
 
 ```bash
+# Clone and build the Rust application
 git clone <repository-url>
 cd semTParser
 cargo build --release
+```
+
+### Python Library Setup
+
+The generated Python scripts require the `semt_py` library, which can be installed from GitHub:
+
+```bash
+# Install the semt_py library
+pip install git+https://github.com/I2Tunimib/I2T-library.git
+```
+
+Alternatively, you can clone the repository and install locally:
+
+```bash
+git clone https://github.com/I2Tunimib/I2T-library.git
+cd I2T-library
+pip install -e .
 ```
 
 ## Usage
@@ -42,8 +62,9 @@ cargo run -- --log-file ./logs.txt --table-file ./table_1.csv
 
 - `-l, --log-file <FILE>`: Specify the log file to parse (default: `./logs.txt`)
 - `-t, --table-file <FILE>`: Specify the CSV table file to process (default: `./table_1.csv`)
+- `-f, --format <FORMAT>`: Output format, either "python" or "notebook" (default: `python`)
 
-### Example
+### Examples
 
 ```bash
 # Parse logs.txt and process table_1.csv (using defaults)
@@ -51,7 +72,18 @@ cargo run
 
 # Use custom files
 cargo run -- --log-file ./my_logs.txt --table-file ./my_table.csv
+
+# Generate a Jupyter notebook instead of Python script
+cargo run -- --log-file ./logs.txt --table-file ./table_1.csv --format notebook
+
+# Build and run with optimized binary
+cargo build --release
+./target/release/semTParser -l ./logs.txt -t ./table_1.csv -f python
 ```
+
+### Cross-platform Usage
+
+You can build the tool for different platforms using GitHub Actions or the `cross` tool. See the `.github/workflows/cross-build.yml` file for automated cross-compilation settings.
 
 ## How It Works
 
@@ -95,8 +127,35 @@ The tool generates Python files with names like `base_file_2025-06-26_08-33.py` 
 
 The generated Python code requires:
 
-- `SemT_py`: Python package for semantic table operations
-- `pandas`: For data manipulation and CSV handling
+- `semt_py`: Python package for semantic table operations (installed from the I2T-library repository)
+- `pandas`: For data manipulation and CSV handling (automatically installed as a dependency of semt_py)
+
+## Configuration
+
+### Environment Variables
+
+You can configure default credentials and API endpoints through environment variables:
+
+```
+BASE_URL=http://localhost:3003
+API_URL=http://localhost:3003/api
+USERNAME=your_username
+PASSWORD=your_password
+```
+
+These can be placed in a `.env` file in the project root, or can be provided when running the Python scripts. If not provided, the scripts will prompt for these values interactively.
+
+### Interactive Configuration
+
+When running the generated Python scripts, you'll be prompted to enter or confirm:
+
+1. Base URL (default: http://localhost:3003)
+2. API URL (default: http://localhost:3003/api) 
+3. Dataset ID
+4. Table name
+5. Table ID (after table is added)
+
+This allows easy customization of endpoints and parameters without modifying the code.
 
 ## Configuration
 
