@@ -15,8 +15,6 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-          - os: ubuntu-latest
             target: x86_64-pc-windows-gnu
           - os: macos-latest
             target: x86_64-apple-darwin
@@ -31,10 +29,6 @@ jobs:
       - name: Install mingw-w64 for Windows cross-compilation
         if: matrix.target == 'x86_64-pc-windows-gnu'
         run: sudo apt-get update && sudo apt-get install -y mingw-w64
-        
-      - name: Install musl-tools for static Linux builds
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -43,20 +37,9 @@ jobs:
 
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
-        
-      - name: Prepare binary with proper extension
-        shell: bash
-        run: |
-          mkdir -p dist
-          if [[ "${{ matrix.target }}" == *windows* ]]; then
-            cp target/${{ matrix.target }}/release/semTParser.exe dist/semTParser-${{ matrix.target }}.exe
-          else
-            cp target/${{ matrix.target }}/release/semTParser dist/semTParser-${{ matrix.target }}
-            chmod +x dist/semTParser-${{ matrix.target }}
-          fi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: semTParser-${{ matrix.target }}
-          path: dist/
+          name: ${{ matrix.target }}-binary
+          path: target/${{ matrix.target }}/release/
