@@ -38,8 +38,16 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Upload artifact
+      - name: Upload artifact (Linux/macOS)
+        if: startsWith(matrix.target, 'x86_64-unknown-linux-gnu') || startsWith(matrix.target, 'x86_64-apple-darwin') || startsWith(matrix.target, 'aarch64-apple-darwin')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-binary
-          path: target/${{ matrix.target }}/release/
+          name: ${{ matrix.target }}-semTParser
+          path: target/${{ matrix.target }}/release/semTParser
+
+      - name: Upload artifact (Windows)
+        if: endsWith(matrix.target, 'windows-gnu') || endsWith(matrix.target, 'windows-msvc')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}-semTParser.exe
+          path: target/${{ matrix.target }}/release/semTParser.exe
