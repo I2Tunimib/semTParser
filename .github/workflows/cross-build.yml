@@ -42,12 +42,12 @@ jobs:
         if: startsWith(matrix.target, 'x86_64-unknown-linux-gnu') || startsWith(matrix.target, 'x86_64-apple-darwin') || startsWith(matrix.target, 'aarch64-apple-darwin')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-semTParser
-          path: target/${{ matrix.target }}/release/semTParser
+          name: ${{ matrix.target }}-main
+          path: target/${{ matrix.target }}/release/main
 
       - name: Upload artifact (Windows)
         if: endsWith(matrix.target, 'windows-gnu') || endsWith(matrix.target, 'windows-msvc')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-semTParser.exe
-          path: target/${{ matrix.target }}/release/semTParser.exe
+          name: ${{ matrix.target }}-main.exe
+          path: target/${{ matrix.target }}/release/main.exe
