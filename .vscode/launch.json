@@ -1,7 +1,4 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
@@ -9,74 +6,16 @@
       "request": "launch",
       "name": "Debug executable 'main'",
       "cargo": {
-        "args": [
-          "build",
-          "--bin=main",
-          "--package=semTParser"
-        ],
+        "args": ["build", "--bin=main", "--package=semTParser"],
         "filter": {
           "name": "main",
           "kind": "bin"
         }
       },
+      "program": "${workspaceFolder}/target/debug/main",
       "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'main'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=main",
-          "--package=semTParser"
-        ],
-        "filter": {
-          "name": "main",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug executable 'test'",
-      "cargo": {
-        "args": [
-          "build",
-          "--bin=test",
-          "--package=semTParser"
-        ],
-        "filter": {
-          "name": "test",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
-      "name": "Debug unit tests in executable 'test'",
-      "cargo": {
-        "args": [
-          "test",
-          "--no-run",
-          "--bin=test",
-          "--package=semTParser"
-        ],
-        "filter": {
-          "name": "test",
-          "kind": "bin"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}"
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false
     }
   ]
 }
