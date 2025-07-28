@@ -5,10 +5,10 @@ use uuid::Uuid;
 
 use crate::{
     code_helper::{
-        get_base_dataset_loader, get_base_dataset_loader_with_column_deletion, get_base_extension_operation, get_base_file_loader_code,
-        get_base_reconciliation_operation,
+        get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
+        get_base_extension_operation, get_base_file_loader_code, get_base_reconciliation_operation,
     },
-    operations::{parse_json, parse_deleted_columns},
+    operations::{parse_deleted_columns, parse_json},
 };
 
 #[derive(Serialize)]
@@ -50,7 +50,11 @@ pub fn create_notebook(
     let current_timestamp = chrono::Utc::now().format("%Y-%m-%d_%H-%M").to_string();
     let table_name = format!("test_table-{}", current_timestamp);
     let path = format!("./base_notebook_file_{}.ipynb", current_timestamp);
-
+    let default_dataset_id = "1".to_string();
+    println!("first operation {:?}", operations[0]);
+    let used_dataset_id = operations[0]
+        .get("DatasetId")
+        .unwrap_or(&default_dataset_id);
     // Create base cells - similar to BASE_FILE_CONTENT in python_helpers
     let mut cells = vec![
         // Initial imports cell
@@ -76,12 +80,17 @@ pub fn create_notebook(
 
     // Data loading cell with optional column deletion
     let dataset_loader_code = match deleted_columns {
-        Some(ref cols) => {
-            get_base_dataset_loader_with_column_deletion(args.table_file.as_str(), "4", table_name.as_str(), cols.clone())
-        }
-        None => {
-            get_base_dataset_loader(args.table_file.as_str(), "4", table_name.as_str())
-        }
+        Some(ref cols) => get_base_dataset_loader_with_column_deletion(
+            args.table_file.as_str(),
+            used_dataset_id,
+            table_name.as_str(),
+            cols.clone(),
+        ),
+        None => get_base_dataset_loader(
+            args.table_file.as_str(),
+            used_dataset_id,
+            table_name.as_str(),
+        ),
     };
 
     cells.push(Cell::Code {

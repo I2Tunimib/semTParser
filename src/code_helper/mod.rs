@@ -58,8 +58,6 @@ table_id, message, table_data = table_manager.add_table(dataset_id, df, table_na
 # return_data = dataset_manager.add_table_to_dataset(dataset_id, df, table_name)
 # data_dict = return_data[1]  # The dictionary containing table info
 # table_id = data_dict['tables'][0]['id']
-
-table_id = get_input_with_default("Enter table_id or press Enter to keep default", table_id)
 "#;
 
 const BASE_RECONCILE_OPERATION: &str = r#"
@@ -102,7 +100,7 @@ except Exception as e:
 const BASE_EXTENSION_OPERATION: &str = r#"
 try:
     table_data = table_manager.get_table(dataset_id, table_id)
-    
+
     extended_table, extension_payload = extension_manager.extend_column(
         table=table_data,
         column_name="__COLUMN_NAME__",
@@ -135,7 +133,10 @@ except Exception as e:
 
 pub fn get_base_file_loader_code() -> String {
     let formatted_code = BASE_FILE_CONTENT
-        .replace("__API_URL__", &std::env::var("API_URL").unwrap_or("http://localhost:3003/api".to_string()))
+        .replace(
+            "__API_URL__",
+            &std::env::var("API_URL").unwrap_or("http://localhost:3003/api".to_string()),
+        )
         .replace(
             "__USERNAME__",
             &std::env::var("USERNAME").unwrap_or_default(),
@@ -192,7 +193,7 @@ pub fn get_base_extension_operation(
 ) -> String {
     // Join properties with spaces for the new format (e.g. "P373 P31 P625")
     let properties_str = properties.join(" ");
-    
+
     let additional_params_str = match additional_params {
         Some(params) if !params.is_empty() => params.join(", "),
         _ => String::from(""),
