@@ -2,6 +2,13 @@
 
 A Rust-based tool for parsing and processing semT (Semantic Table) logs to generate Python code for table operations including reconciliation and extension operations.
 
+---
+
+📄 **Detailed technical documentation about log parsing and code/notebook generation is available here:**  
+[docs/parsing_and_generation.md](docs/parsing_and_generation.md)
+
+---
+
 ## Overview
 
 semTParser analyzes log files to extract table operations and automatically generates Python scripts that can reproduce those operations. It processes logs to identify reconciliation and extension operations, then creates corresponding Python code to execute these operations on CSV tables.
