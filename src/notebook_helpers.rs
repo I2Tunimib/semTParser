@@ -105,8 +105,18 @@ pub fn create_notebook(
     });
 
     // Add operation cells
-    for operation in operations {
+    for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
+
+        // Create metadata object with all operation information
+        let operation_metadata = serde_json::json!({
+            "semtparser": {
+                "operation_index": index + 1,
+                "operation_type": operation_type,
+                "operation_data": operation
+            }
+        });
+
         match operation_type.as_str() {
             "RECONCILIATION" => {
                 let reconciler_id = operation.get("Reconciler").unwrap();
@@ -114,16 +124,18 @@ pub fn create_notebook(
 
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),
-                    metadata: serde_json::json!({}),
+                    metadata: operation_metadata.clone(),
                     source: vec![format!(
-                        "## Reconciliation operation for column {} by {}",
-                        col_name, reconciler_id
+                        "## Operation {}: Reconciliation for column {} by {}",
+                        index + 1,
+                        col_name,
+                        reconciler_id
                     )],
                 });
 
                 cells.push(Cell::Code {
                     id: Uuid::new_v4().to_string(),
-                    metadata: serde_json::json!({}),
+                    metadata: operation_metadata,
                     source: get_base_reconciliation_operation(&col_name, None, reconciler_id)
                         .lines()
                         .map(|line| format!("{}\n", line))
@@ -148,16 +160,18 @@ pub fn create_notebook(
 
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),
-                    metadata: serde_json::json!({}),
+                    metadata: operation_metadata.clone(),
                     source: vec![format!(
-                        "## Extension operation for column {} by {}",
-                        col_name, extender_id
+                        "## Operation {}: Extension for column {} by {}",
+                        index + 1,
+                        col_name,
+                        extender_id
                     )],
                 });
 
                 cells.push(Cell::Code {
                     id: Uuid::new_v4().to_string(),
-                    metadata: serde_json::json!({}),
+                    metadata: operation_metadata,
                     source: get_base_extension_operation(&col_name, props, None, extender_id)
                         .lines()
                         .map(|line| format!("{}\n", line))
@@ -169,12 +183,52 @@ pub fn create_notebook(
             _ => {
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),
-                    metadata: serde_json::json!({}),
-                    source: vec![format!("Unknown operation type: {}", operation_type)],
+                    metadata: operation_metadata,
+                    source: vec![format!(
+                        "Operation {}: Unknown operation type: {}",
+                        index + 1,
+                        operation_type
+                    )],
                 });
             }
         }
     }
+
+    // Add operation summary cell
+    let summary_metadata = serde_json::json!({
+        "semtparser": {
+            "cell_type": "summary",
+            "total_operations": operations.len(),
+            "operation_types": operations.iter()
+                .map(|op| op.get("OpType").map_or("UNKNOWN".to_string(), |s| s.clone()))
+                .collect::<Vec<String>>()
+        }
+    });
+
+    let mut summary_lines = vec![
+        "# Operation Summary\n".to_string(),
+        format!("**Total operations processed:** {}\n\n", operations.len()),
+    ];
+
+    for (index, operation) in operations.iter().enumerate() {
+        let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+        let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
+        let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
+
+        summary_lines.push(format!(
+            "{}. **{}** on column `{}` at `{}`\n",
+            index + 1,
+            op_type,
+            column_name,
+            timestamp
+        ));
+    }
+
+    cells.push(Cell::Markdown {
+        id: Uuid::new_v4().to_string(),
+        metadata: summary_metadata,
+        source: summary_lines,
+    });
 
     let notebook = Notebook {
         nbformat: 4,

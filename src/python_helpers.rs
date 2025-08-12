@@ -9,6 +9,7 @@ use std::{
     io::{Error, Write},
     path::Path,
 };
+
 pub struct Args {
     pub table_file: String,
 }
@@ -53,6 +54,7 @@ pub fn write_table_loader(
         ))
     }
 }
+
 pub fn create_extension_operation(
     file_path_str: &str,
     column_name: &str,
@@ -92,6 +94,76 @@ fn get_file_writer(file_path: &Path) -> Result<File, Error> {
     }
 }
 
+fn write_operation_separator(
+    file_path_str: &str,
+    operation: &HashMap<String, String>,
+    operation_index: usize,
+) -> Result<(), Error> {
+    let file_path = Path::new(file_path_str);
+    let mut file = get_file_writer(file_path)?;
+
+    // Create a parsable comment separator with operation metadata
+    let separator = format!(
+        "\n# =============================================================================\n# OPERATION_{}: {}\n# METADATA: {{\n",
+        operation_index,
+        operation.get("OpType").unwrap_or(&"UNKNOWN".to_string())
+    );
+
+    file.write_all(separator.as_bytes())?;
+
+    // Write all operation fields as parsable comments
+    for (key, value) in operation {
+        let metadata_line = format!("#   \"{}\": \"{}\",\n", key, value.replace("\"", "\\\""));
+        file.write_all(metadata_line.as_bytes())?;
+    }
+
+    file.write_all(
+        b"# }\n# =============================================================================\n\n",
+    )?;
+
+    Ok(())
+}
+
+fn write_operation_summary(
+    file_path_str: &str,
+    operations: &[HashMap<String, String>],
+) -> Result<(), Error> {
+    let file_path = Path::new(file_path_str);
+    let mut file = get_file_writer(file_path)?;
+
+    file.write_all(
+        b"\n# =============================================================================\n",
+    )?;
+    file.write_all(b"# OPERATION SUMMARY\n")?;
+    file.write_all(
+        b"# =============================================================================\n",
+    )?;
+    file.write_all(format!("# Total operations: {}\n", operations.len()).as_bytes())?;
+
+    for (index, operation) in operations.iter().enumerate() {
+        let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+        let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
+        let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
+
+        file.write_all(
+            format!(
+                "# Operation {}: {} on column '{}' at {}\n",
+                index + 1,
+                op_type,
+                column_name,
+                timestamp
+            )
+            .as_bytes(),
+        )?;
+    }
+
+    file.write_all(
+        b"# =============================================================================\n",
+    )?;
+
+    Ok(())
+}
+
 pub fn create_python(
     operations: Vec<HashMap<String, String>>,
     args: Args,
@@ -105,6 +177,7 @@ pub fn create_python(
         }
         Err(e) => eprintln!("Error creating base file: {}", e),
     }
+
     // Debug: Print only operations with DeletedCols
     operations.iter().for_each(|op| {
         if let Some(deleted_cols) = op.get("DeletedCols") {
@@ -119,6 +192,7 @@ pub fn create_python(
             println!("---");
         }
     });
+
     // Look for deleted columns in SAVE_TABLE operations
     let deleted_columns = operations
         .iter()
@@ -142,7 +216,13 @@ pub fn create_python(
         Ok(_) => println!("Table loader written successfully."),
         Err(e) => eprintln!("Error writing table loader: {}", e),
     }
-    for operation in operations {
+
+    for (index, operation) in operations.iter().enumerate() {
+        // Write operation separator with metadata
+        if let Err(e) = write_operation_separator(&path, operation, index + 1) {
+            eprintln!("Error writing operation separator: {}", e);
+        }
+
         let operation_type = operation.get("OpType").unwrap();
         match operation_type.as_str() {
             "RECONCILIATION" => {
@@ -186,10 +266,16 @@ pub fn create_python(
                 }
             }
             _ => {
-                println!("Unkown Operation type: {}", operation_type);
+                println!("Unknown Operation type: {}", operation_type);
                 // Here you can handle other operation types as needed
             }
         }
     }
+
+    // Write operation summary at the end of the file
+    if let Err(e) = write_operation_summary(&path, &operations) {
+        eprintln!("Error writing operation summary: {}", e);
+    }
+
     Ok(path)
 }
