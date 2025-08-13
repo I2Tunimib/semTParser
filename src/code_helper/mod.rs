@@ -2,6 +2,7 @@ const BASE_FILE_CONTENT: &str = r#"
 # This is a base file for the Python helper module.
 # Import necessary classes and functions from the semt_py package
 import semt_py
+import getpass
 from semt_py import AuthManager
 from semt_py.extension_manager import ExtensionManager
 from semt_py.reconciliation_manager import ReconciliationManager
@@ -15,8 +16,11 @@ def get_input_with_default(prompt, default):
     return user_input if user_input else default
 
 base_url = get_input_with_default("Enter base URL or press Enter to keep default", "__BASE_URL__")
-username = "__USERNAME__"  # Replace with your username
-password = "__PASSWORD__"  # Replace with your password
+username = get_input_with_default("Enter your username", "__USERNAME__")
+default_password = "__PASSWORD__"
+password_prompt = f"Enter your password (default: use stored password): "
+password_input = getpass.getpass(password_prompt)
+password = password_input if password_input else default_password
 api_url = get_input_with_default("Enter API URL or press Enter to keep default", "__API_URL__")
 
 Auth_manager = AuthManager(api_url, username, password)
