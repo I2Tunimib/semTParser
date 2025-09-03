@@ -66,7 +66,34 @@ fn main() {
                 Err(e) => eprintln!("Error processing operations: {}", e),
             }
         }
-        Ok(None) => println!("No GET_TABLE entry found."),
+        Ok(None) => {
+            println!("No GET_TABLE entry found. Creating base file with no operations.");
+            // Create file with empty operations
+            let empty_operations = Vec::new();
+            match args.format.as_str() {
+                "python" => {
+                    let python_args = python_helpers::Args {
+                        table_file: args.table_file.clone(),
+                    };
+                    match create_python(empty_operations, python_args) {
+                        Ok(file_path) => println!("Python file created at: {}", file_path),
+                        Err(e) => eprintln!("Error creating Python file: {}", e),
+                    }
+                }
+                "notebook" => {
+                    let notebook_args = notebook_helpers::Args {
+                        table_file: args.table_file.clone(),
+                    };
+                    match create_notebook(empty_operations, notebook_args) {
+                        Ok(file_path) => {
+                            println!("Notebook file created at: {}", file_path)
+                        }
+                        Err(e) => eprintln!("Error creating notebook file: {}", e),
+                    }
+                }
+                _ => eprintln!("Unknown format specified: {}", args.format),
+            }
+        }
         Err(e) => eprintln!("Error: {}", e),
     }
 }

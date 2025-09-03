@@ -32,8 +32,8 @@ pub fn write_table_loader(
     let table_path = Path::new(table_path_str);
     let file_path = Path::new(file_path_str);
 
-    if table_path.exists() {
-        let formatted_code = match deleted_columns {
+    let formatted_code = if table_path.exists() {
+        match deleted_columns {
             Some(cols) if !cols.is_empty() => get_base_dataset_loader_with_column_deletion(
                 table_path_str,
                 dataset_id,
@@ -41,18 +41,28 @@ pub fn write_table_loader(
                 cols,
             ),
             _ => get_base_dataset_loader(table_path_str, dataset_id, table_name),
-        };
-
-        //write to file
-        let mut file = get_file_writer(file_path)?;
-        file.write_all(formatted_code.as_bytes())?;
-        Ok(())
+        }
     } else {
-        Err(Error::new(
-            std::io::ErrorKind::NotFound,
-            "Table path does not exist",
-        ))
-    }
+        // If table file doesn't exist, still generate the loader code but warn the user
+        eprintln!(
+            "Warning: Table file '{}' does not exist. Generating code with placeholder path.",
+            table_path_str
+        );
+        match deleted_columns {
+            Some(cols) if !cols.is_empty() => get_base_dataset_loader_with_column_deletion(
+                table_path_str,
+                dataset_id,
+                table_name,
+                cols,
+            ),
+            _ => get_base_dataset_loader(table_path_str, dataset_id, table_name),
+        }
+    };
+
+    //write to file
+    let mut file = get_file_writer(file_path)?;
+    file.write_all(formatted_code.as_bytes())?;
+    Ok(())
 }
 
 pub fn create_extension_operation(
@@ -200,12 +210,18 @@ pub fn create_python(
         .and_then(|op| op.get("DeletedCols"))
         .map(|deleted_cols_str| parse_deleted_columns(deleted_cols_str))
         .filter(|cols| !cols.is_empty());
-    let first_op = operations[0].clone();
-    println!("first operation {:?}", first_op.keys());
-    let default_dataset_id = "1".to_string();
-    let current_dataset_id = operations[0]
-        .get("DatasetId")
-        .unwrap_or(&default_dataset_id);
+
+    let default_dataset_id = "5".to_string();
+    let current_dataset_id = if !operations.is_empty() {
+        let first_op = operations[0].clone();
+        println!("first operation {:?}", first_op.keys());
+        operations[0]
+            .get("DatasetId")
+            .unwrap_or(&default_dataset_id)
+    } else {
+        println!("No operations found, using default dataset ID");
+        &default_dataset_id
+    };
     match write_table_loader(
         path.as_str(),
         &args.table_file,
