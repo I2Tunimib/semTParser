@@ -94,7 +94,6 @@ try:
         json_table=reconciled_table,
         number_of_rows=4,  # Show 4 rows
         from_row=0,        # Start from first row
-        labels=['City', 'County', 'Country', 'City_temperature_max', 'City_temperature_min']  # Example columns
     )
 except Exception as e:
     print(f"An error occurred during reconciliation: {e}")
@@ -129,7 +128,6 @@ try:
         json_table=extended_table,
         number_of_rows=4,  # Show 4 rows
         from_row=0,        # Start from first row
-        labels=['City', 'County', 'Country', 'City_temperature_max', 'City_temperature_min']  # Example columns
     )
 except Exception as e:
     print(f"An error occurred during extension: {e}")
