@@ -51,7 +51,6 @@ pub fn create_notebook(
     let table_name = format!("test_table-{}", current_timestamp);
     let path = format!("./base_notebook_file_{}.ipynb", current_timestamp);
     let default_dataset_id = "1".to_string();
-    println!("first operation {:?}", operations[0]);
     let used_dataset_id = operations[0]
         .get("DatasetId")
         .unwrap_or(&default_dataset_id);

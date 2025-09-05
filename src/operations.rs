@@ -131,10 +131,6 @@ pub fn process_operations(
         let timestamp = op.get("timestamp").cloned().unwrap_or_default();
         let operation_type = op.get("OpType").cloned().unwrap_or_default();
         if operation_type == "RECONCILIATION" {
-            println!(
-                "Processing reconciliation for column: {} at timestamp: {}",
-                col_name, timestamp
-            );
             if !find_reconciliation(filtered_operations.clone(), &col_name) {
                 filtered_operations.push(op);
             } else {
@@ -184,10 +180,6 @@ pub fn parse_json(json_string: &str) -> Option<Value> {
 }
 
 pub fn parse_deleted_columns(deleted_cols_string: &str) -> Vec<String> {
-    println!(
-        "Parsing deleted columns from string: {}",
-        deleted_cols_string
-    );
     if deleted_cols_string.is_empty() {
         return vec![];
     }

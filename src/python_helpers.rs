@@ -191,15 +191,10 @@ pub fn create_python(
     // Debug: Print only operations with DeletedCols
     operations.iter().for_each(|op| {
         if let Some(deleted_cols) = op.get("DeletedCols") {
-            println!("Found operation with DeletedCols:");
-            println!("  OpType: {:?}", op.get("OpType"));
-            println!("  DeletedCols: {:?}", deleted_cols);
             println!(
                 "  Parsed columns: {:?}",
                 parse_deleted_columns(deleted_cols)
             );
-            println!("  Full operation: {:?}", op);
-            println!("---");
         }
     });
 
@@ -213,8 +208,6 @@ pub fn create_python(
 
     let default_dataset_id = "5".to_string();
     let current_dataset_id = if !operations.is_empty() {
-        let first_op = operations[0].clone();
-        println!("first operation {:?}", first_op.keys());
         operations[0]
             .get("DatasetId")
             .unwrap_or(&default_dataset_id)
@@ -257,7 +250,6 @@ pub fn create_python(
             }
             "EXTENSION" => {
                 // Handle extension operation
-                println!("Extension operation detected: {:?}", operation);
                 // Here you can implement the logic for handling extension operations
                 let extender_id = operation.get("Extender").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
