@@ -108,7 +108,7 @@ try:
         table=table_data,
         column_name="__COLUMN_NAME__",
         extender_id="__EXTENDER_ID__",
-        properties="__EXTENSION_PROPERTIES__",
+        properties=__EXTENSION_PROPERTIES__,
         other_params={__EXTENSION_PARAMS__}
     )
     payload = extension_payload
@@ -193,8 +193,19 @@ pub fn get_base_extension_operation(
     additional_params: Option<Vec<String>>,
     extender_id: &str,
 ) -> String {
-    // Join properties with spaces for the new format (e.g. "P373 P31 P625")
-    let properties_str = properties.join(" ");
+    // Format properties as a Python list (e.g. ["P373", "P31", "P625"])
+    let properties_str = if properties.is_empty() {
+        "[]".to_string()
+    } else {
+        format!(
+            "[{}]",
+            properties
+                .iter()
+                .map(|p| format!("\"{}\"", p))
+                .collect::<Vec<String>>()
+                .join(", ")
+        )
+    };
 
     let additional_params_str = match additional_params {
         Some(params) if !params.is_empty() => params.join(", "),

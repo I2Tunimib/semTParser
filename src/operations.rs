@@ -101,11 +101,22 @@ pub fn pre_process_operations(
     Ok(operations_arrays)
 }
 
-// fn filter_unused_operations(
-//     operations: Vec<HashMap<String, String>>,
-// ) -> Vec<HashMap<String, String>> {
-//     for operation in &operations {}
-// }
+fn get_extension_key(operation: &HashMap<String, String>) -> String {
+    let column_name = operation.get("ColumnName").map_or("", |v| v);
+    let extender = operation.get("Extender").map_or("", |v| v);
+    let additional_data = operation.get("AdditionalData").map_or("", |v| v);
+    format!("{}:{}:{}", column_name, extender, additional_data)
+}
+
+fn find_extension(operations: &[HashMap<String, String>], key: &str) -> Option<usize> {
+    operations.iter().position(|op| {
+        if op.get("OpType") == Some(&"EXTENSION".to_string()) {
+            get_extension_key(op) == key
+        } else {
+            false
+        }
+    })
+}
 
 pub fn sort_operations_by_timestamp(
     operations: Vec<HashMap<String, String>>,
@@ -130,6 +141,7 @@ pub fn process_operations(
         let col_name = op.get("ColumnName").cloned().unwrap_or_default();
         let timestamp = op.get("timestamp").cloned().unwrap_or_default();
         let operation_type = op.get("OpType").cloned().unwrap_or_default();
+
         if operation_type == "RECONCILIATION" {
             if !find_reconciliation(filtered_operations.clone(), &col_name) {
                 filtered_operations.push(op);
@@ -138,6 +150,18 @@ pub fn process_operations(
                     "Skipping reconciliation for column: {} at timestamp: {}",
                     col_name, timestamp
                 );
+            }
+        } else if operation_type == "EXTENSION" {
+            let extension_key = get_extension_key(&op);
+            if let Some(existing_index) = find_extension(&filtered_operations, &extension_key) {
+                // Replace the existing extension operation with the newer one
+                filtered_operations[existing_index] = op;
+                println!(
+                    "Replacing extension for column: {} with extender at timestamp: {}",
+                    col_name, timestamp
+                );
+            } else {
+                filtered_operations.push(op);
             }
         } else {
             filtered_operations.push(op);

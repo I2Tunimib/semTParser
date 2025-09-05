@@ -255,14 +255,38 @@ pub fn create_python(
                 let col_name = operation.get("ColumnName").unwrap();
 
                 let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                // Look for "property" array in additional data and join values with whitespaces
+                // If "property" array exists, use its values; otherwise fallback to "properties" string
                 let props: Vec<String> = additional_data
-                    .get("properties")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .split(' ')
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-                    .collect();
+                    .get("property")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        let property_values: Vec<String> = arr.iter()
+                            .filter_map(|item| item.as_str())
+                            .map(|s| s.to_string())
+                            .collect();
+                        println!("Found 'property' array in additional data: {:?}", property_values);
+                        property_values
+                    })
+                    .unwrap_or_else(|| {
+                        // Fallback to existing "properties" field for backward compatibility
+                        let fallback_props: Vec<String> = additional_data
+                            .get("properties")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .split(' ')
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .collect();
+                        if !fallback_props.is_empty() {
+                            println!("Using fallback 'properties' field: {:?}", fallback_props);
+                        } else {
+                            println!("No 'property' array or 'properties' field found in additional data");
+                        }
+                        fallback_props
+                    });
+
                 match create_extension_operation(path.as_str(), col_name, extender_id, props, None)
                 {
                     Ok(_) => {

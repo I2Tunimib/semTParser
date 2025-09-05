@@ -231,6 +231,10 @@ pub fn create_notebook(
                     outputs: vec![],
                 });
             }
+            "GET_TABLE" | "SAVE_TABLE" => {
+                // Skip these operation types as they are not useful for notebook output
+                continue;
+            }
             _ => {
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),

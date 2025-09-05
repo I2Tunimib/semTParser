@@ -148,14 +148,37 @@ pub fn create_notebook(
                 let col_name = operation.get("ColumnName").unwrap();
 
                 let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                // Look for "property" array in additional data and join values with whitespaces
+                // If "property" array exists, use its values; otherwise fallback to "properties" string
                 let props: Vec<String> = additional_data
-                    .get("properties")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .split(' ')
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.to_string())
-                    .collect();
+                    .get("property")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        let property_values: Vec<String> = arr.iter()
+                            .filter_map(|item| item.as_str())
+                            .map(|s| s.to_string())
+                            .collect();
+                        println!("Found 'property' array in additional data: {:?}", property_values);
+                        property_values
+                    })
+                    .unwrap_or_else(|| {
+                        // Fallback to existing "properties" field for backward compatibility
+                        let fallback_props: Vec<String> = additional_data
+                            .get("properties")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .split(' ')
+                            .filter(|s| !s.is_empty())
+                            .map(|s| s.to_string())
+                            .collect();
+                        if !fallback_props.is_empty() {
+                            println!("Using fallback 'properties' field: {:?}", fallback_props);
+                        } else {
+                            println!("No 'property' array or 'properties' field found in additional data");
+                        }
+                        fallback_props
+                    });
 
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),
@@ -178,6 +201,10 @@ pub fn create_notebook(
                     execution_count: None,
                     outputs: vec![],
                 });
+            }
+            "GET_TABLE" | "SAVE_TABLE" => {
+                // Skip these operation types as they are not useful for notebook output
+                continue;
             }
             _ => {
                 cells.push(Cell::Markdown {
