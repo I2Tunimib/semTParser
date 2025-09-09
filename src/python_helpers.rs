@@ -237,8 +237,45 @@ pub fn create_python(
             "RECONCILIATION" => {
                 let reconciler_id = operation.get("Reconciler").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
-                let res =
-                    create_reconciliation_operation(path.as_str(), col_name, reconciler_id, None);
+
+                // Parse additional data to check for additionalColumns
+                let additional_columns =
+                    if let Some(additional_data_str) = operation.get("AdditionalData") {
+                        if let Some(additional_data) = parse_json(additional_data_str) {
+                            if let Some(additional_columns_obj) =
+                                additional_data.get("additionalColumns")
+                            {
+                                if let Some(obj) = additional_columns_obj.as_object() {
+                                    let column_names: Vec<String> =
+                                        obj.keys().map(|k| format!("\"{}\"", k)).collect();
+                                    if !column_names.is_empty() {
+                                        println!(
+                                            "Found additionalColumns in reconciliation: {:?}",
+                                            column_names
+                                        );
+                                        Some(column_names)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
+                let res = create_reconciliation_operation(
+                    path.as_str(),
+                    col_name,
+                    reconciler_id,
+                    additional_columns,
+                );
                 match res {
                     Ok(_) => {
                         println!("Reconciliation operation created successfully.")

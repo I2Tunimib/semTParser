@@ -121,6 +121,38 @@ pub fn create_notebook(
                 let reconciler_id = operation.get("Reconciler").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
+                // Parse additional data to check for additionalColumns
+                let additional_columns =
+                    if let Some(additional_data_str) = operation.get("AdditionalData") {
+                        if let Some(additional_data) = parse_json(additional_data_str) {
+                            if let Some(additional_columns_obj) =
+                                additional_data.get("additionalColumns")
+                            {
+                                if let Some(obj) = additional_columns_obj.as_object() {
+                                    let column_names: Vec<String> =
+                                        obj.keys().map(|k| format!("\"{}\"", k)).collect();
+                                    if !column_names.is_empty() {
+                                        println!(
+                                            "Found additionalColumns in reconciliation: {:?}",
+                                            column_names
+                                        );
+                                        Some(column_names)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+
                 cells.push(Cell::Markdown {
                     id: Uuid::new_v4().to_string(),
                     metadata: operation_metadata.clone(),
@@ -135,10 +167,14 @@ pub fn create_notebook(
                 cells.push(Cell::Code {
                     id: Uuid::new_v4().to_string(),
                     metadata: operation_metadata,
-                    source: get_base_reconciliation_operation(&col_name, None, reconciler_id)
-                        .lines()
-                        .map(|line| format!("{}\n", line))
-                        .collect(),
+                    source: get_base_reconciliation_operation(
+                        &col_name,
+                        additional_columns,
+                        reconciler_id,
+                    )
+                    .lines()
+                    .map(|line| format!("{}\n", line))
+                    .collect(),
                     execution_count: None,
                     outputs: vec![],
                 });
