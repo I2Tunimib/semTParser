@@ -295,7 +295,7 @@ pub fn create_python(
 
                 // Look for "property" array in additional data and join values with whitespaces
                 // If "property" array exists, use its values; otherwise fallback to "properties" string
-                let props: Vec<String> = additional_data
+                let mut props: Vec<String> = additional_data
                     .get("property")
                     .and_then(|v| v.as_array())
                     .map(|arr| {
@@ -324,8 +324,69 @@ pub fn create_python(
                         fallback_props
                     });
 
-                match create_extension_operation(path.as_str(), col_name, extender_id, props, None)
-                {
+                // Check for weatherParams and add them to properties
+                if let Some(weather_params) = additional_data.get("weatherParams") {
+                    if let Some(weather_array) = weather_params.as_array() {
+                        let weather_props: Vec<String> = weather_array
+                            .iter()
+                            .filter_map(|item| item.as_str())
+                            .map(|s| s.to_string())
+                            .collect();
+                        props.extend(weather_props);
+                        println!("Added weatherParams to properties: {:?}", weather_params);
+                    }
+                }
+
+                // Check for labels and add them to properties
+                if let Some(labels) = additional_data.get("labels") {
+                    if let Some(labels_array) = labels.as_array() {
+                        let label_props: Vec<String> = labels_array
+                            .iter()
+                            .filter_map(|item| item.as_str())
+                            .map(|s| s.to_string())
+                            .collect();
+                        props.extend(label_props);
+                        println!("Added labels to properties: {:?}", labels);
+                    }
+                }
+
+                // Check for dates field and extract date column name for other_params
+                let mut other_params = Vec::new();
+                if let Some(dates) = additional_data.get("dates") {
+                    if let Some(dates_obj) = dates.as_object() {
+                        // Get the first key and extract the third element from its array
+                        if let Some((first_key, first_value)) = dates_obj.iter().next() {
+                            if let Some(date_array) = first_value.as_array() {
+                                if date_array.len() > 2 {
+                                    if let Some(date_column_name) = date_array[2].as_str() {
+                                        other_params.push(format!(
+                                            "\"date_column_name\": \"{}\"",
+                                            date_column_name
+                                        ));
+                                        println!(
+                                            "Found date column name: {} from key: {}",
+                                            date_column_name, first_key
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                let additional_params = if other_params.is_empty() {
+                    None
+                } else {
+                    Some(other_params)
+                };
+
+                match create_extension_operation(
+                    path.as_str(),
+                    col_name,
+                    extender_id,
+                    props,
+                    additional_params,
+                ) {
                     Ok(_) => {
                         println!("Extension operation created successfully.")
                     }

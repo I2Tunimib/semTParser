@@ -229,6 +229,19 @@ pub fn create_notebook(
                     }
                 }
 
+                // Check for labels and add them to properties
+                if let Some(labels) = additional_data.get("labels") {
+                    if let Some(labels_array) = labels.as_array() {
+                        let label_props: Vec<String> = labels_array
+                            .iter()
+                            .filter_map(|item| item.as_str())
+                            .map(|s| s.to_string())
+                            .collect();
+                        props.extend(label_props);
+                        println!("Added labels to properties: {:?}", labels);
+                    }
+                }
+
                 // Check for dates field and extract date column name for other_params
                 let mut other_params = Vec::new();
                 if let Some(dates) = additional_data.get("dates") {
