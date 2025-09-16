@@ -38,16 +38,130 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename executable (Linux/macOS)
+        if: startsWith(matrix.target, 'x86_64-unknown-linux-gnu') || startsWith(matrix.target, 'x86_64-apple-darwin') || startsWith(matrix.target, 'aarch64-apple-darwin')
+        run: cp target/${{ matrix.target }}/release/main target/${{ matrix.target }}/release/semTParser
+
+      - name: Rename executable (Windows)
+        if: endsWith(matrix.target, 'windows-gnu') || endsWith(matrix.target, 'windows-msvc')
+        run: cp target/${{ matrix.target }}/release/main.exe target/${{ matrix.target }}/release/semTParser.exe
+
       - name: Upload artifact (Linux/macOS)
         if: startsWith(matrix.target, 'x86_64-unknown-linux-gnu') || startsWith(matrix.target, 'x86_64-apple-darwin') || startsWith(matrix.target, 'aarch64-apple-darwin')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-main
-          path: target/${{ matrix.target }}/release/main
+          name: ${{ matrix.target }}-semTParser
+          path: target/${{ matrix.target }}/release/semTParser
 
       - name: Upload artifact (Windows)
         if: endsWith(matrix.target, 'windows-gnu') || endsWith(matrix.target, 'windows-msvc')
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}-main.exe
-          path: target/${{ matrix.target }}/release/main.exe
+          name: ${{ matrix.target }}-semTParser.exe
+          path: target/${{ matrix.target }}/release/semTParser.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_OUTPUT
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      
+      - name: Create release directory and prepare files
+        run: |
+          mkdir -p release/
+          # Copy and rename files for release
+          cp artifacts/x86_64-unknown-linux-gnu-semTParser/semTParser release/semTParser-linux-x64
+          cp artifacts/x86_64-apple-darwin-semTParser/semTParser release/semTParser-macos-x64
+          cp artifacts/aarch64-apple-darwin-semTParser/semTParser release/semTParser-macos-arm64
+          cp artifacts/x86_64-pc-windows-gnu-semTParser.exe/semTParser.exe release/semTParser-windows-x64.exe
+          cp artifacts/x86_64-pc-windows-msvc-semTParser.exe/semTParser.exe release/semTParser-windows-x64-msvc.exe
+          
+          # Make executables executable
+          chmod +x release/semTParser-*
+          
+          # List files for verification
+          ls -la release/
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.date.outputs.date }}
+          release_name: semTParser Release v${{ steps.date.outputs.date }}
+          body: |
+            Automated release of semTParser
+            
+            **Built on:** ${{ steps.date.outputs.date }}
+            **Commit:** ${{ github.sha }}
+            
+            ## Downloads:
+            - **Linux x64:** semTParser-linux-x64
+            - **macOS x64:** semTParser-macos-x64  
+            - **macOS ARM64:** semTParser-macos-arm64
+            - **Windows x64 (GNU):** semTParser-windows-x64.exe
+            - **Windows x64 (MSVC):** semTParser-windows-x64-msvc.exe
+          draft: false
+          prerelease: false
+      
+      - name: Upload Linux x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/semTParser-linux-x64
+          asset_name: semTParser-linux-x64
+          asset_content_type: application/octet-stream
+      
+      - name: Upload macOS x64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/semTParser-macos-x64
+          asset_name: semTParser-macos-x64
+          asset_content_type: application/octet-stream
+      
+      - name: Upload macOS ARM64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/semTParser-macos-arm64
+          asset_name: semTParser-macos-arm64
+          asset_content_type: application/octet-stream
+      
+      - name: Upload Windows x64 (GNU)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/semTParser-windows-x64.exe
+          asset_name: semTParser-windows-x64.exe
+          asset_content_type: application/octet-stream
+      
+      - name: Upload Windows x64 (MSVC)
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/semTParser-windows-x64-msvc.exe
+          asset_name: semTParser-windows-x64-msvc.exe
+          asset_content_type: application/octet-stream
