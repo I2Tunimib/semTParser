@@ -324,14 +324,15 @@ pub fn create_notebook(
         let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
         let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
         let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
-
-        summary_lines.push(format!(
-            "{}. **{}** on column `{}` at `{}`\n",
-            index + 1,
-            op_type,
-            column_name,
-            timestamp
-        ));
+        if op_type == "RECONCILIATION" || op_type == "EXTENSION" {
+            summary_lines.push(format!(
+                "{}. **{}** on column `{}` at `{}`\n",
+                index + 1,
+                op_type,
+                column_name,
+                timestamp
+            ));
+        }
     }
 
     cells.push(Cell::Markdown {

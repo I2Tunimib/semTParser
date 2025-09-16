@@ -87,14 +87,15 @@ try:
     )
 
     print(successMessage)
-    # Display the full reconciled table
-    html_table = Utility.display_json_table(reconciled_table)
     # Or display with specific parameters (example)
     html_table = Utility.display_json_table(
         json_table=reconciled_table,
         number_of_rows=4,  # Show 4 rows
         from_row=0,        # Start from first row
     )
+    if html_table is not None:
+        from IPython.display import display
+        display(html_table)
 except Exception as e:
     print(f"An error occurred during reconciliation: {e}")
     # Handle the exception as needed, e.g., log it or re-raise it
@@ -121,14 +122,15 @@ try:
     )
 
     print(successMessage)
-    # Display the full extended table
-    html_table = Utility.display_json_table(extended_table)
     # Or display with specific parameters (example)
     html_table = Utility.display_json_table(
         json_table=extended_table,
         number_of_rows=4,  # Show 4 rows
         from_row=0,        # Start from first row
     )
+    if html_table is not None:
+        from IPython.display import display
+        display(html_table)
 except Exception as e:
     print(f"An error occurred during extension: {e}")
 "#;
