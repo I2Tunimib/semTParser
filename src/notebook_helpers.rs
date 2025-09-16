@@ -318,11 +318,20 @@ pub fn create_notebook(
     }
 
     // Add operation summary cell
+    // Filter operations to only include RECONCILIATION and EXTENSION
+    let displayed_operations: Vec<&HashMap<String, String>> = operations
+        .iter()
+        .filter(|op| {
+            let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+            op_type == "RECONCILIATION" || op_type == "EXTENSION"
+        })
+        .collect();
+
     let summary_metadata = serde_json::json!({
         "semtparser": {
             "cell_type": "summary",
-            "total_operations": operations.len(),
-            "operation_types": operations.iter()
+            "total_operations": displayed_operations.len(),
+            "operation_types": displayed_operations.iter()
                 .map(|op| op.get("OpType").map_or("UNKNOWN".to_string(), |s| s.clone()))
                 .collect::<Vec<String>>()
         }
@@ -330,22 +339,20 @@ pub fn create_notebook(
 
     let mut summary_lines = vec![
         "# Operation Summary\n".to_string(),
-        format!("**Total operations processed:** {}\n\n", operations.len()),
+        format!("**Total operations processed:** {}\n\n", displayed_operations.len()),
     ];
 
-    for (index, operation) in operations.iter().enumerate() {
+    for (index, operation) in displayed_operations.iter().enumerate() {
         let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
         let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
         let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
-        if op_type == "RECONCILIATION" || op_type == "EXTENSION" {
-            summary_lines.push(format!(
-                "{}. **{}** on column `{}` at `{}`\n",
-                index + 1,
-                op_type,
-                column_name,
-                timestamp
-            ));
-        }
+        summary_lines.push(format!(
+            "{}. **{}** on column `{}` at `{}`\n",
+            index + 1,
+            op_type,
+            column_name,
+            timestamp
+        ));
     }
 
     cells.push(Cell::Markdown {
