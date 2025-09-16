@@ -104,6 +104,8 @@ pub fn create_notebook(
     });
 
     // Add operation cells
+    let mut displayed_operation_counter = 0; // Counter for RECONCILIATION and EXTENSION operations only
+    
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
 
@@ -118,6 +120,8 @@ pub fn create_notebook(
 
         match operation_type.as_str() {
             "RECONCILIATION" => {
+                displayed_operation_counter += 1; // Increment counter for displayed operations
+                
                 let reconciler_id = operation.get("Reconciler").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
@@ -158,7 +162,7 @@ pub fn create_notebook(
                     metadata: operation_metadata.clone(),
                     source: vec![format!(
                         "## Operation {}: Reconciliation for column {} by {}",
-                        index + 1,
+                        displayed_operation_counter,
                         col_name,
                         reconciler_id
                     )],
@@ -180,6 +184,8 @@ pub fn create_notebook(
                 });
             }
             "EXTENSION" => {
+                displayed_operation_counter += 1; // Increment counter for displayed operations
+                
                 let extender_id = operation.get("Extender").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
@@ -277,7 +283,7 @@ pub fn create_notebook(
                     metadata: operation_metadata.clone(),
                     source: vec![format!(
                         "## Operation {}: Extension for column {} by {}",
-                        index + 1,
+                        displayed_operation_counter,
                         col_name,
                         extender_id
                     )],

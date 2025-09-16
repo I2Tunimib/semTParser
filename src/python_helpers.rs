@@ -107,7 +107,8 @@ fn get_file_writer(file_path: &Path) -> Result<File, Error> {
 fn write_operation_separator(
     file_path_str: &str,
     operation: &HashMap<String, String>,
-    operation_index: usize,
+    _operation_index: usize,
+    displayed_operation_number: usize,
 ) -> Result<(), Error> {
     let file_path = Path::new(file_path_str);
     let mut file = get_file_writer(file_path)?;
@@ -115,7 +116,7 @@ fn write_operation_separator(
     // Create a parsable comment separator with operation metadata
     let separator = format!(
         "\n# =============================================================================\n# OPERATION_{}: {}\n# METADATA: {{\n",
-        operation_index,
+        displayed_operation_number,
         operation.get("OpType").unwrap_or(&"UNKNOWN".to_string())
     );
 
@@ -141,6 +142,15 @@ fn write_operation_summary(
     let file_path = Path::new(file_path_str);
     let mut file = get_file_writer(file_path)?;
 
+    // Filter operations to only include RECONCILIATION and EXTENSION
+    let displayed_operations: Vec<&HashMap<String, String>> = operations
+        .iter()
+        .filter(|op| {
+            let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+            op_type == "RECONCILIATION" || op_type == "EXTENSION"
+        })
+        .collect();
+
     file.write_all(
         b"\n# =============================================================================\n",
     )?;
@@ -148,9 +158,9 @@ fn write_operation_summary(
     file.write_all(
         b"# =============================================================================\n",
     )?;
-    file.write_all(format!("# Total operations: {}\n", operations.len()).as_bytes())?;
+    file.write_all(format!("# Total operations: {}\n", displayed_operations.len()).as_bytes())?;
 
-    for (index, operation) in operations.iter().enumerate() {
+    for (index, operation) in displayed_operations.iter().enumerate() {
         let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
         let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
         let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
@@ -227,12 +237,31 @@ pub fn create_python(
     }
 
     for (index, operation) in operations.iter().enumerate() {
-        // Write operation separator with metadata
-        if let Err(e) = write_operation_separator(&path, operation, index + 1) {
-            eprintln!("Error writing operation separator: {}", e);
+        let operation_type = operation.get("OpType").unwrap();
+        
+        match operation_type.as_str() {
+            "RECONCILIATION" | "EXTENSION" => {
+                // Only write separator and generate code for RECONCILIATION and EXTENSION operations
+                // Count displayed operations by filtering up to current position
+                let displayed_operation_number = operations[..=index]
+                    .iter()
+                    .filter(|op| {
+                        let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+                        op_type == "RECONCILIATION" || op_type == "EXTENSION"
+                    })
+                    .count();
+                
+                // Write operation separator with metadata
+                if let Err(e) = write_operation_separator(&path, operation, index + 1, displayed_operation_number) {
+                    eprintln!("Error writing operation separator: {}", e);
+                }
+            }
+            _ => {
+                // Skip writing separators for other operation types
+                continue;
+            }
         }
 
-        let operation_type = operation.get("OpType").unwrap();
         match operation_type.as_str() {
             "RECONCILIATION" => {
                 let reconciler_id = operation.get("Reconciler").unwrap();
