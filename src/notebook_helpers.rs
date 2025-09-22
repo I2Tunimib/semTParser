@@ -54,21 +54,6 @@ pub fn create_notebook(
     let used_dataset_id = operations[0]
         .get("DatasetId")
         .unwrap_or(&default_dataset_id);
-    // Create base cells - similar to BASE_FILE_CONTENT in python_helpers
-    let mut cells = vec![
-        // Initial imports cell
-        Cell::Code {
-            id: Uuid::new_v4().to_string(),
-            metadata: serde_json::json!({}),
-            source: get_base_file_loader_code()
-                .lines()
-                .map(|line| format!("{}\n", line))
-                .collect(),
-            execution_count: None,
-            outputs: vec![],
-        },
-    ];
-
     // Look for deleted columns in SAVE_TABLE operations
     let deleted_columns = operations
         .iter()
@@ -77,7 +62,102 @@ pub fn create_notebook(
         .map(|deleted_cols_str| parse_deleted_columns(deleted_cols_str))
         .filter(|cols| !cols.is_empty());
 
-    // Data loading cell with optional column deletion
+    // Create base cells - starting with summary as first cell
+    let mut cells = vec![];
+
+    // Add operation summary cell as the first cell
+    // Filter operations to only include RECONCILIATION and EXTENSION
+    let mut displayed_operations: Vec<&HashMap<String, String>> = operations.iter().collect();
+
+    // Sort operations by timestamp in ascending order
+    displayed_operations.sort_by(|a, b| {
+        let timestamp_a = a.get("timestamp").map(|s| s.as_str()).unwrap_or("");
+        let timestamp_b = b.get("timestamp").map(|s| s.as_str()).unwrap_or("");
+        timestamp_a.cmp(timestamp_b)
+    });
+
+    let summary_metadata = serde_json::json!({
+        "semtparser": {
+            "cell_type": "summary",
+            "total_operations": displayed_operations.len(),
+            "operation_types": displayed_operations.iter()
+                .map(|op| op.get("OpType").map_or("UNKNOWN".to_string(), |s| s.clone()))
+                .collect::<Vec<String>>()
+        }
+    });
+
+    let mut summary_lines = vec![
+        "# Operation Summary\n".to_string(),
+        format!(
+            "**Total operations processed:** {}\n\n",
+            displayed_operations.len()
+        ),
+    ];
+
+    for (index, operation) in displayed_operations.iter().enumerate() {
+        let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
+        let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
+        let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
+
+        // Show extender/reconciler information
+        let tool_info = match op_type {
+            "RECONCILIATION" => {
+                let reconciler_id = operation.get("Reconciler").map_or("N/A", |s| s.as_str());
+                format!(" using **{}** reconciler", reconciler_id)
+            }
+            "EXTENSION" => {
+                let extender_id = operation.get("Extender").map_or("N/A", |s| s.as_str());
+                format!(" using **{}** extender", extender_id)
+            }
+            _ => String::new(),
+        };
+
+        summary_lines.push(format!(
+            "{}. **{}** on column `{}`{} at `{}`\n",
+            index + 1,
+            op_type,
+            column_name,
+            tool_info,
+            timestamp
+        ));
+    }
+
+    cells.push(Cell::Markdown {
+        id: Uuid::new_v4().to_string(),
+        metadata: summary_metadata,
+        source: summary_lines,
+    });
+
+    // Add Operation 0: Setup and Data Loading
+    let operation_0_metadata = serde_json::json!({
+        "semtparser": {
+            "operation_index": 0,
+            "operation_type": "SETUP",
+            "operation_data": {
+                "description": "Initial setup and data loading"
+            }
+        }
+    });
+
+    cells.push(Cell::Markdown {
+        id: Uuid::new_v4().to_string(),
+        metadata: operation_0_metadata.clone(),
+        source: vec!["## Operation 0: Setup and Data Loading\n".to_string()],
+    });
+
+    // Add initial imports cell as part of Operation 0
+    cells.push(Cell::Code {
+        id: Uuid::new_v4().to_string(),
+        metadata: operation_0_metadata.clone(),
+        source: get_base_file_loader_code()
+            .lines()
+            .map(|line| format!("{}\n", line))
+            .collect(),
+        execution_count: None,
+        outputs: vec![],
+    });
+
+    // Data loading cell with optional column deletion as part of Operation 0
     let dataset_loader_code = match deleted_columns {
         Some(ref cols) => get_base_dataset_loader_with_column_deletion(
             args.table_file.as_str(),
@@ -94,7 +174,7 @@ pub fn create_notebook(
 
     cells.push(Cell::Code {
         id: Uuid::new_v4().to_string(),
-        metadata: serde_json::json!({}),
+        metadata: operation_0_metadata,
         source: dataset_loader_code
             .lines()
             .map(|line| format!("{}\n", line))
@@ -105,7 +185,7 @@ pub fn create_notebook(
 
     // Add operation cells
     let mut displayed_operation_counter = 0; // Counter for RECONCILIATION and EXTENSION operations only
-    
+
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
 
@@ -121,7 +201,7 @@ pub fn create_notebook(
         match operation_type.as_str() {
             "RECONCILIATION" => {
                 displayed_operation_counter += 1; // Increment counter for displayed operations
-                
+
                 let reconciler_id = operation.get("Reconciler").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
@@ -162,9 +242,7 @@ pub fn create_notebook(
                     metadata: operation_metadata.clone(),
                     source: vec![format!(
                         "## Operation {}: Reconciliation for column {} by {}",
-                        displayed_operation_counter,
-                        col_name,
-                        reconciler_id
+                        displayed_operation_counter, col_name, reconciler_id
                     )],
                 });
 
@@ -185,7 +263,7 @@ pub fn create_notebook(
             }
             "EXTENSION" => {
                 displayed_operation_counter += 1; // Increment counter for displayed operations
-                
+
                 let extender_id = operation.get("Extender").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
@@ -283,9 +361,7 @@ pub fn create_notebook(
                     metadata: operation_metadata.clone(),
                     source: vec![format!(
                         "## Operation {}: Extension for column {} by {}",
-                        displayed_operation_counter,
-                        col_name,
-                        extender_id
+                        displayed_operation_counter, col_name, extender_id
                     )],
                 });
 
@@ -322,50 +398,6 @@ pub fn create_notebook(
             }
         }
     }
-
-    // Add operation summary cell
-    // Filter operations to only include RECONCILIATION and EXTENSION
-    let displayed_operations: Vec<&HashMap<String, String>> = operations
-        .iter()
-        .filter(|op| {
-            let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
-            op_type == "RECONCILIATION" || op_type == "EXTENSION"
-        })
-        .collect();
-
-    let summary_metadata = serde_json::json!({
-        "semtparser": {
-            "cell_type": "summary",
-            "total_operations": displayed_operations.len(),
-            "operation_types": displayed_operations.iter()
-                .map(|op| op.get("OpType").map_or("UNKNOWN".to_string(), |s| s.clone()))
-                .collect::<Vec<String>>()
-        }
-    });
-
-    let mut summary_lines = vec![
-        "# Operation Summary\n".to_string(),
-        format!("**Total operations processed:** {}\n\n", displayed_operations.len()),
-    ];
-
-    for (index, operation) in displayed_operations.iter().enumerate() {
-        let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
-        let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
-        let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
-        summary_lines.push(format!(
-            "{}. **{}** on column `{}` at `{}`\n",
-            index + 1,
-            op_type,
-            column_name,
-            timestamp
-        ));
-    }
-
-    cells.push(Cell::Markdown {
-        id: Uuid::new_v4().to_string(),
-        metadata: summary_metadata,
-        source: summary_lines,
-    });
 
     let notebook = Notebook {
         nbformat: 4,

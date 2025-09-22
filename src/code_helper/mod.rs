@@ -57,6 +57,17 @@ if columns_to_delete and columns_to_delete != ['']:
 
 table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
+# Display the loaded table
+print(f"Table loaded successfully: {message}")
+html_table = Utility.display_json_table(
+    json_table=table_data,
+    number_of_rows=4,  # Show 4 rows
+    from_row=0,        # Start from first row
+)
+if html_table is not None:
+    from IPython.display import display
+    display(html_table)
+
 # Extract the table ID
 # Alternative method if above doesn't work:
 # return_data = dataset_manager.add_table_to_dataset(dataset_id, df, table_name)

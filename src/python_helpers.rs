@@ -238,7 +238,7 @@ pub fn create_python(
 
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
-        
+
         match operation_type.as_str() {
             "RECONCILIATION" | "EXTENSION" => {
                 // Only write separator and generate code for RECONCILIATION and EXTENSION operations
@@ -250,9 +250,14 @@ pub fn create_python(
                         op_type == "RECONCILIATION" || op_type == "EXTENSION"
                     })
                     .count();
-                
+
                 // Write operation separator with metadata
-                if let Err(e) = write_operation_separator(&path, operation, index + 1, displayed_operation_number) {
+                if let Err(e) = write_operation_separator(
+                    &path,
+                    operation,
+                    index + 1,
+                    displayed_operation_number,
+                ) {
                     eprintln!("Error writing operation separator: {}", e);
                 }
             }
