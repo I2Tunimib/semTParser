@@ -113,12 +113,8 @@ pub fn create_notebook(
         };
 
         summary_lines.push(format!(
-            "{}. **{}** on column `{}`{} at `{}`\n",
-            index + 1,
-            op_type,
-            column_name,
-            tool_info,
-            timestamp
+            "- **{}** on column `{}`{} at `{}`\n",
+            op_type, column_name, tool_info, timestamp
         ));
     }
 

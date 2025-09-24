@@ -42,7 +42,9 @@ import pandas as pd
 dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
 table_name = get_input_with_default("Enter table_name or press Enter to keep default", "__TABLE_NAME__")
 
-df = pd.read_csv('__TABLE_PATH__')
+# Ask user for an alternate CSV file path before loading. Use the original path as default.
+filename = get_input_with_default("Enter path to CSV file or press Enter to keep default", "__TABLE_PATH__")
+df = pd.read_csv(filename)
 
 # Delete specified columns if any
 columns_to_delete = [__COLUMNS_TO_DELETE__]
@@ -57,16 +59,20 @@ if columns_to_delete and columns_to_delete != ['']:
 
 table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
-# Display the loaded table
+# Display the loaded table using pandas DataFrame head
 print(f"Table loaded successfully: {message}")
-html_table = Utility.display_json_table(
-    json_table=table_data,
-    number_of_rows=4,  # Show 4 rows
-    from_row=0,        # Start from first row
-)
-if html_table is not None:
+try:
+    # If the returned table_data corresponds to a DataFrame-like structure,
+    # prefer showing the DataFrame head for quick inspection.
+    # Use the DataFrame we uploaded (`df`) to show the first rows.
     from IPython.display import display
-    display(html_table)
+    print("Showing dataframe head:")
+    display(df.head())
+except Exception as e:
+    # Fallback: if display or df.head() fails, print a small sample of rows
+    print(f"Could not display DataFrame head: {e}")
+    # Try printing a textual preview
+    print(df.head().to_string())
 
 # Extract the table ID
 # Alternative method if above doesn't work:

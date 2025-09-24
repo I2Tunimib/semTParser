@@ -204,11 +204,13 @@ pub fn parse_json(json_string: &str) -> Option<Value> {
 }
 
 pub fn parse_deleted_columns(deleted_cols_string: &str) -> Vec<String> {
-    if deleted_cols_string.is_empty() {
+    // Treat empty string or the sentinel value "NO_DELETED" as no deleted columns
+    let trimmed = deleted_cols_string.trim();
+    if trimmed.is_empty() || trimmed == "NO_DELETED" {
         return vec![];
     }
 
-    deleted_cols_string
+    trimmed
         .split("|-|")
         .map(|col| col.trim().to_string())
         .filter(|col| !col.is_empty())
