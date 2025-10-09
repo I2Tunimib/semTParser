@@ -19,7 +19,7 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
         match line_result {
             Ok(line) => {
                 // Process the line
-                if line.contains("GET_TABLE") {
+                if line.contains("GET_TABLE") && !end_line.is_none() {
                     start_line = Some(line);
                     break; // Stop searching after finding the first occurrence
                 } else if line.contains("SAVE_TABLE") {
@@ -118,6 +118,15 @@ fn find_extension(operations: &[HashMap<String, String>], key: &str) -> Option<u
     })
 }
 
+fn get_sort_priority(op_type: &str) -> u8 {
+    match op_type {
+        "RECONCILIATION" => 0,
+        "PROPAGATE_TYPE" => 1,
+        "EXTENSION" => 2,
+        _ => 3,
+    }
+}
+
 pub fn sort_operations_by_timestamp(
     operations: Vec<HashMap<String, String>>,
 ) -> Vec<HashMap<String, String>> {
@@ -170,12 +179,9 @@ pub fn process_operations(
     filtered_operations.sort_by(|a, b| {
         let a_type = a.get("OpType").map(|s| s.as_str()).unwrap_or("");
         let b_type = b.get("OpType").map(|s| s.as_str()).unwrap_or("");
-        match (a_type, b_type) {
-            ("RECONCILIATION", "RECONCILIATION") => std::cmp::Ordering::Equal,
-            ("RECONCILIATION", _) => std::cmp::Ordering::Less, // RECONCILIATION comes first
-            (_, "RECONCILIATION") => std::cmp::Ordering::Greater, // RECONCILIATION comes first
-            _ => std::cmp::Ordering::Equal, // Keep original order for non-RECONCILIATION operations
-        }
+        let a_pri = get_sort_priority(a_type);
+        let b_pri = get_sort_priority(b_type);
+        a_pri.cmp(&b_pri)
     });
     filtered_operations
 }

@@ -6,7 +6,8 @@ use uuid::Uuid;
 use crate::{
     code_helper::{
         get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-        get_base_extension_operation, get_base_file_loader_code, get_base_reconciliation_operation,
+        get_base_extension_operation, get_base_file_loader_code, get_base_propagation_operation,
+        get_base_reconciliation_operation,
     },
     operations::{parse_deleted_columns, parse_json},
 };
@@ -376,6 +377,46 @@ pub fn create_notebook(
                     execution_count: None,
                     outputs: vec![],
                 });
+            }
+            "PROPAGATE_TYPE" => {
+                displayed_operation_counter += 1; // Increment counter for displayed operations
+
+                let col_name = operation.get("ColumnName").unwrap();
+
+                let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                if let Some(data_map) = additional_data.as_object() {
+                    let value = serde_json::Value::Object(data_map.clone());
+
+                    cells.push(Cell::Markdown {
+                        id: Uuid::new_v4().to_string(),
+                        metadata: operation_metadata.clone(),
+                        source: vec![format!(
+                            "## Operation {}: Propagation for column {}",
+                            displayed_operation_counter, col_name
+                        )],
+                    });
+
+                    cells.push(Cell::Code {
+                        id: Uuid::new_v4().to_string(),
+                        metadata: operation_metadata,
+                        source: get_base_propagation_operation(&col_name, Some(&value))
+                            .lines()
+                            .map(|line| format!("{}\n", line))
+                            .collect(),
+                        execution_count: None,
+                        outputs: vec![],
+                    });
+                } else {
+                    cells.push(Cell::Markdown {
+                        id: Uuid::new_v4().to_string(),
+                        metadata: operation_metadata,
+                        source: vec![format!(
+                            "Operation {}: PROPAGATE_TYPE - Invalid additional data for column {}",
+                            displayed_operation_counter, col_name
+                        )],
+                    });
+                }
             }
             "GET_TABLE" | "SAVE_TABLE" => {
                 // Skip these operation types as they are not useful for notebook output

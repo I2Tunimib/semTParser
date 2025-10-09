@@ -1,6 +1,7 @@
+use chrono::DateTime;
+use serde_json::Value;
+
 const BASE_FILE_CONTENT: &str = r#"
-# This is a base file for the Python helper module.
-# Import necessary classes and functions from the semt_py package
 import semt_py
 import getpass
 from semt_py import AuthManager
@@ -30,23 +31,19 @@ dataset_manager = DatasetManager(base_url, Auth_manager)
 table_manager = TableManager(base_url, Auth_manager)
 extension_manager = ExtensionManager(base_url, token)
 utility = Utility(base_url, Auth_manager)
+manager = ModificationManager()
+
 "#;
 
 const BASE_DATASET_LOAD_DATAFRAME: &str = r#"
-# Load a dataset into a DataFrame
 import pandas as pd
-
-# Note: get_input_with_default is defined in the main file
-# Reusing it here for consistency
 
 dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
 table_name = get_input_with_default("Enter table_name or press Enter to keep default", "__TABLE_NAME__")
 
-# Ask user for an alternate CSV file path before loading. Use the original path as default.
 filename = get_input_with_default("Enter path to CSV file or press Enter to keep default", "__TABLE_PATH__")
 df = pd.read_csv(filename)
 
-# Delete specified columns if any
 columns_to_delete = [__COLUMNS_TO_DELETE__]
 if columns_to_delete and columns_to_delete != ['']:
     for col in columns_to_delete:
@@ -59,32 +56,20 @@ if columns_to_delete and columns_to_delete != ['']:
 
 table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
-# Display the loaded table using pandas DataFrame head
 print(f"Table loaded successfully: {message}")
 try:
-    # If the returned table_data corresponds to a DataFrame-like structure,
-    # prefer showing the DataFrame head for quick inspection.
-    # Use the DataFrame we uploaded (`df`) to show the first rows.
     from IPython.display import display
     print("Showing dataframe head:")
     display(df.head())
 except Exception as e:
-    # Fallback: if display or df.head() fails, print a small sample of rows
     print(f"Could not display DataFrame head: {e}")
-    # Try printing a textual preview
     print(df.head().to_string())
-
-# Extract the table ID
-# Alternative method if above doesn't work:
-# return_data = dataset_manager.add_table_to_dataset(dataset_id, df, table_name)
-# data_dict = return_data[1]  # The dictionary containing table info
-# table_id = data_dict['tables'][0]['id']
 "#;
 
 const BASE_RECONCILE_OPERATION: &str = r#"
 
 reconciliator_id = "__RECONCILIATOR_ID__"
-optional_columns = [__OPTIONAL_COLUMNS__]  # Replace with actual optional columns if needed
+optional_columns = [__OPTIONAL_COLUMNS__]
 column_name = "__COLUMN_NAME__"
 try:
     table_data = table_manager.get_table(dataset_id, table_id)
@@ -104,18 +89,44 @@ try:
     )
 
     print(successMessage)
-    # Or display with specific parameters (example)
     html_table = Utility.display_json_table(
         json_table=reconciled_table,
-        number_of_rows=4,  # Show 4 rows
-        from_row=0,        # Start from first row
+        number_of_rows=4,
+        from_row=0,
     )
     if html_table is not None:
         from IPython.display import display
         display(html_table)
 except Exception as e:
     print(f"An error occurred during reconciliation: {e}")
-    # Handle the exception as needed, e.g., log it or re-raise it
+"#;
+
+const BASE_PROPAGATION_OPERATION: &str = r#"
+try:
+    type_obj = __TYPE_TO_PROPAGATE__
+
+    table_data, backend_payload = manager.propagate_type(table_data, '__COL_TO_PROPAGATE__', type_obj)
+
+
+    successMessage, sentPayload = utility.push_to_backend(
+        dataset_id,
+        table_id,
+        backend_payload,
+        debug=False
+    )
+
+    print(successMessage)
+    html_table = Utility.display_json_table(
+        json_table=table_data,
+        number_of_rows=4,
+        from_row=0,
+    )
+    if html_table is not None:
+        from IPython.display import display
+        display(html_table)
+except Exception as e:
+    print(f"An error occurred during propagation: {e}")
+
 "#;
 
 const BASE_EXTENSION_OPERATION: &str = r#"
@@ -139,11 +150,10 @@ try:
     )
 
     print(successMessage)
-    # Or display with specific parameters (example)
     html_table = Utility.display_json_table(
         json_table=extended_table,
-        number_of_rows=4,  # Show 4 rows
-        from_row=0,        # Start from first row
+        number_of_rows=4,
+        from_row=0,
     )
     if html_table is not None:
         from IPython.display import display
@@ -251,5 +261,44 @@ pub fn get_base_reconciliation_operation(
         .replace("__RECONCILIATOR_ID__", reconciler_id) // Replace with actual reconciliator ID
         .replace("__COLUMN_NAME__", column_name)
         .replace("__OPTIONAL_COLUMNS__", &additional_columns_str);
+    formatted_code
+}
+
+fn value_to_python(value: &Value) -> String {
+    match value {
+        Value::Null => "None".to_string(),
+        Value::Bool(b) => {
+            if *b {
+                "True".to_string()
+            } else {
+                "False".to_string()
+            }
+        }
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => format!("\"{}\"", s.replace("\"", "\\\"")),
+        Value::Array(arr) => {
+            let items: Vec<String> = arr.iter().map(value_to_python).collect();
+            format!("[{}]", items.join(", "))
+        }
+        Value::Object(obj) => {
+            let items: Vec<String> = obj
+                .iter()
+                .map(|(k, v)| format!("\"{}\": {}", k, value_to_python(v)))
+                .collect();
+            format!("{{{}}}", items.join(", "))
+        }
+    }
+}
+
+pub fn get_base_propagation_operation(
+    column_name: &str,
+    additional_data: Option<&Value>,
+) -> String {
+    let type_str = additional_data
+        .map(value_to_python)
+        .unwrap_or_else(|| "{}".to_string());
+    let formatted_code = BASE_PROPAGATION_OPERATION
+        .replace("__COL_TO_PROPAGATE__", column_name)
+        .replace("__TYPE_TO_PROPAGATE__", &type_str);
     formatted_code
 }

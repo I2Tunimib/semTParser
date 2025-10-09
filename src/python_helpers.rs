@@ -1,8 +1,10 @@
 use crate::code_helper::{
     get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-    get_base_extension_operation, get_base_file_loader_code, get_base_reconciliation_operation,
+    get_base_extension_operation, get_base_file_loader_code, get_base_propagation_operation,
+    get_base_reconciliation_operation,
 };
 use crate::operations::{parse_deleted_columns, parse_json};
+use serde_json::Value;
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -95,7 +97,18 @@ pub fn create_reconciliation_operation(
     file.write_all(formatted_code.as_bytes())?;
     Ok(())
 }
+pub fn create_propagation_operation(
+    file_path_str: &str,
+    column_name: &str,
+    additional_data: &Value,
+) -> Result<(), Error> {
+    let file_path = Path::new(file_path_str);
+    let mut file = get_file_writer(file_path)?;
 
+    let formatted_code = get_base_propagation_operation(column_name, Some(additional_data));
+    file.write_all(formatted_code.as_bytes())?;
+    Ok(())
+}
 fn get_file_writer(file_path: &Path) -> Result<File, Error> {
     if file_path.exists() {
         OpenOptions::new().write(true).append(true).open(file_path)
@@ -147,7 +160,7 @@ fn write_operation_summary(
         .iter()
         .filter(|op| {
             let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
-            op_type == "RECONCILIATION" || op_type == "EXTENSION"
+            op_type == "RECONCILIATION" || op_type == "EXTENSION" || op_type == "PROPAGATE_TYPE"
         })
         .collect();
 
@@ -214,7 +227,7 @@ pub fn create_python(
         .map(|deleted_cols_str| parse_deleted_columns(deleted_cols_str))
         .filter(|cols| !cols.is_empty());
 
-    let default_dataset_id = "5".to_string();
+    let default_dataset_id = "0".to_string();
     let current_dataset_id = if !operations.is_empty() {
         operations[0]
             .get("DatasetId")
@@ -238,14 +251,16 @@ pub fn create_python(
         let operation_type = operation.get("OpType").unwrap();
 
         match operation_type.as_str() {
-            "RECONCILIATION" | "EXTENSION" => {
+            "RECONCILIATION" | "EXTENSION" | "PROPAGATE_TYPE" => {
                 // Only write separator and generate code for RECONCILIATION and EXTENSION operations
                 // Count displayed operations by filtering up to current position
                 let displayed_operation_number = operations[..=index]
                     .iter()
                     .filter(|op| {
                         let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
-                        op_type == "RECONCILIATION" || op_type == "EXTENSION"
+                        op_type == "RECONCILIATION"
+                            || op_type == "EXTENSION"
+                            || op_type == "PROPAGATE_TYPE"
                     })
                     .count();
 
@@ -315,6 +330,21 @@ pub fn create_python(
                     Err(e) => {
                         eprintln!("Error creating reconciliation operation: {}", e)
                     }
+                }
+            }
+            "PROPAGATE_TYPE" => {
+                let col_name = operation.get("ColumnName").unwrap();
+                let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                if let Some(data_map) = additional_data.as_object() {
+                    let value = Value::Object(data_map.clone());
+                    let res = create_propagation_operation(path.as_str(), col_name, &value);
+                    match res {
+                        Ok(_) => println!("Propagation operation created successfully."),
+                        Err(e) => eprintln!("Error creating propagation operation: {}", e),
+                    }
+                } else {
+                    eprintln!("Additional data for PROPAGATE_TYPE is not an object");
                 }
             }
             "EXTENSION" => {
