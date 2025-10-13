@@ -95,7 +95,7 @@ pub fn create_notebook(
         ),
     ];
 
-    for (index, operation) in displayed_operations.iter().enumerate() {
+    for (_, operation) in displayed_operations.iter().enumerate() {
         let op_type = operation.get("OpType").map_or("UNKNOWN", |s| s.as_str());
         let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
         let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
