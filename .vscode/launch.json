@@ -4,7 +4,7 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'main'",
+      "name": "Debug - Notebook format",
       "cargo": {
         "args": ["build", "--bin=main", "--package=semTParser"],
         "filter": {
@@ -12,10 +12,57 @@
           "kind": "bin"
         }
       },
+      "args": ["-l", "./logs.txt", "-t", "./table_1.csv", "-f", "notebook"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "sourceLanguages": ["rust"],
+      "expressions": "native"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug - Python format",
+      "cargo": {
+        "args": ["build", "--bin=main", "--package=semTParser"],
+        "filter": {
+          "name": "main",
+          "kind": "bin"
+        }
+      },
+      "args": ["-l", "./logs.txt", "-t", "./table_1.csv", "-f", "python"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "sourceLanguages": ["rust"],
+      "expressions": "native"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug executable 'main'",
       "program": "${workspaceFolder}/target/debug/main",
       "args": [],
       "cwd": "${workspaceFolder}",
-      "stopOnEntry": false
+      "stopOnEntry": false,
+      "preLaunchTask": "cargo build",
+      "sourceLanguages": ["rust"],
+      "expressions": "native"
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Debug - Old logs Python",
+      "cargo": {
+        "args": ["build", "--bin=main", "--package=semTParser"],
+        "filter": {
+          "name": "main",
+          "kind": "bin"
+        }
+      },
+      "args": ["-l", "./logs_old.txt", "-t", "./table_1.csv", "-f", "python"],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "sourceLanguages": ["rust"],
+      "expressions": "native"
     }
   ]
 }

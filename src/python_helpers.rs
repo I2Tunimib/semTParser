@@ -1,7 +1,7 @@
 use crate::code_helper::{
     get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-    get_base_extension_operation, get_base_file_loader_code, get_base_propagation_operation,
-    get_base_reconciliation_operation,
+    get_base_export_operation, get_base_extension_operation, get_base_file_loader_code,
+    get_base_propagation_operation, get_base_reconciliation_operation,
 };
 use crate::operations::{parse_deleted_columns, parse_json};
 use serde_json::Value;
@@ -251,8 +251,8 @@ pub fn create_python(
         let operation_type = operation.get("OpType").unwrap();
 
         match operation_type.as_str() {
-            "RECONCILIATION" | "EXTENSION" | "PROPAGATE_TYPE" => {
-                // Only write separator and generate code for RECONCILIATION and EXTENSION operations
+            "RECONCILIATION" | "EXTENSION" | "PROPAGATE_TYPE" | "EXPORT" => {
+                // Only write separator and generate code for RECONCILIATION, EXTENSION, PROPAGATE_TYPE and EXPORT operations
                 // Count displayed operations by filtering up to current position
                 let displayed_operation_number = operations[..=index]
                     .iter()
@@ -261,6 +261,7 @@ pub fn create_python(
                         op_type == "RECONCILIATION"
                             || op_type == "EXTENSION"
                             || op_type == "PROPAGATE_TYPE"
+                            || op_type == "EXPORT"
                     })
                     .count();
 
@@ -457,9 +458,73 @@ pub fn create_python(
                     }
                 }
             }
+            "EXPORT" => {
+                // Handle export operation
+                if let Some(additional_data_str) = operation.get("AdditionalData") {
+                    if let Some(additional_data) = parse_json(additional_data_str) {
+                        if let Some(format) = additional_data.get("format").and_then(|f| f.as_str())
+                        {
+                            let output_file = additional_data
+                                .get("outputFile")
+                                .and_then(|f| f.as_str())
+                                .unwrap_or("export_output");
+
+                            if let Some(export_code) =
+                                get_base_export_operation(format, output_file)
+                            {
+                                let file_path = Path::new(&path);
+                                match get_file_writer(file_path) {
+                                    Ok(mut file) => {
+                                        use std::io::Write;
+                                        if let Err(e) = writeln!(file, "\n{}", export_code) {
+                                            eprintln!("Error writing export operation: {}", e);
+                                        } else {
+                                            println!("Export operation created successfully for format: {}", format);
+                                        }
+                                    }
+                                    Err(e) => eprintln!("Error getting file writer: {}", e),
+                                }
+                            } else {
+                                println!(
+                                    "Unsupported export format: {}, skipping export operation",
+                                    format
+                                );
+                            }
+                        } else {
+                            eprintln!("No format specified in EXPORT AdditionalData");
+                        }
+                    } else {
+                        eprintln!("Could not parse AdditionalData for EXPORT operation");
+                    }
+                } else {
+                    eprintln!("No AdditionalData found for EXPORT operation");
+                }
+            }
             _ => {
                 println!("Unknown Operation type: {}", operation_type);
                 // Here you can handle other operation types as needed
+            }
+        }
+    }
+
+    // Check if there's no EXPORT operation, add default JSON export
+    let has_export = operations
+        .iter()
+        .any(|op| op.get("OpType").map_or(false, |t| t == "EXPORT"));
+
+    if !has_export {
+        println!("No EXPORT operation found, adding default JSON export");
+        if let Some(default_export) = get_base_export_operation("json", "results.json") {
+            let file_path = Path::new(&path);
+            match get_file_writer(file_path) {
+                Ok(mut file) => {
+                    use std::io::Write;
+                    if let Err(e) = writeln!(file, "\n# Default Export (JSON)\n{}", default_export)
+                    {
+                        eprintln!("Error writing default export operation: {}", e);
+                    }
+                }
+                Err(e) => eprintln!("Error getting file writer for default export: {}", e),
             }
         }
     }

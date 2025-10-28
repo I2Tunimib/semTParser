@@ -18,6 +18,10 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
     for line_result in rev_reader {
         match line_result {
             Ok(line) => {
+                // Skip empty lines
+                if line.trim().is_empty() {
+                    continue;
+                }
                 // Process the line
                 if line.contains("GET_TABLE") && !end_line.is_none() {
                     start_line = Some(line);
@@ -56,7 +60,10 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
             break; // Stop reading after reaching the end line
         }
         if found_start {
-            result.push(line.to_string());
+            // Skip empty lines
+            if !line.trim().is_empty() {
+                result.push(line.to_string());
+            }
         }
     }
     if result.is_empty() {
@@ -123,7 +130,8 @@ fn get_sort_priority(op_type: &str) -> u8 {
         "RECONCILIATION" => 0,
         "PROPAGATE_TYPE" => 1,
         "EXTENSION" => 2,
-        _ => 3,
+        "EXPORT" => 3,
+        _ => 4,
     }
 }
 
@@ -134,9 +142,17 @@ pub fn sort_operations_by_timestamp(
     sorted_operations.sort_by(|a, b| {
         let a_timestamp = a.get("timestamp").map(|s| s.as_str()).unwrap_or("");
         let b_timestamp = b.get("timestamp").map(|s| s.as_str()).unwrap_or("");
-        let datetime_a = DateTime::parse_from_rfc3339(a_timestamp).unwrap();
-        let datetime_b = DateTime::parse_from_rfc3339(b_timestamp).unwrap();
-        datetime_b.cmp(&datetime_a)
+
+        // Handle invalid or missing timestamps gracefully
+        let datetime_a = DateTime::parse_from_rfc3339(a_timestamp);
+        let datetime_b = DateTime::parse_from_rfc3339(b_timestamp);
+
+        match (datetime_a, datetime_b) {
+            (Ok(da), Ok(db)) => db.cmp(&da),
+            (Ok(_), Err(_)) => std::cmp::Ordering::Less,
+            (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
+            (Err(_), Err(_)) => std::cmp::Ordering::Equal,
+        }
     });
     sorted_operations
 }
@@ -171,6 +187,19 @@ pub fn process_operations(
                 );
             } else {
                 filtered_operations.push(op);
+            }
+        } else if operation_type == "EXPORT" {
+            // Check if EXPORT operation with same timestamp already exists
+            if !filtered_operations.iter().any(|existing_op| {
+                existing_op.get("OpType") == Some(&"EXPORT".to_string())
+                    && existing_op.get("timestamp") == op.get("timestamp")
+            }) {
+                filtered_operations.push(op);
+            } else {
+                println!(
+                    "Skipping duplicate EXPORT operation at timestamp: {}",
+                    timestamp
+                );
             }
         } else {
             filtered_operations.push(op);

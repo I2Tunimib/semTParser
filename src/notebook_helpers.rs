@@ -6,8 +6,8 @@ use uuid::Uuid;
 use crate::{
     code_helper::{
         get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-        get_base_extension_operation, get_base_file_loader_code, get_base_propagation_operation,
-        get_base_reconciliation_operation,
+        get_base_export_operation, get_base_extension_operation, get_base_file_loader_code,
+        get_base_propagation_operation, get_base_reconciliation_operation,
     },
     operations::{parse_deleted_columns, parse_json},
 };
@@ -181,7 +181,7 @@ pub fn create_notebook(
     });
 
     // Add operation cells
-    let mut displayed_operation_counter = 0; // Counter for RECONCILIATION and EXTENSION operations only
+    let mut displayed_operation_counter = 0; // Counter for RECONCILIATION, EXTENSION, PROPAGATE_TYPE and EXPORT operations only
 
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
@@ -418,6 +418,62 @@ pub fn create_notebook(
                     });
                 }
             }
+            "EXPORT" => {
+                displayed_operation_counter += 1; // Increment counter for displayed operations
+
+                // Handle export operation
+                if let Some(additional_data_str) = operation.get("AdditionalData") {
+                    if let Some(additional_data) = parse_json(additional_data_str) {
+                        if let Some(format) = additional_data.get("format").and_then(|f| f.as_str())
+                        {
+                            let output_file = additional_data
+                                .get("outputFile")
+                                .and_then(|f| f.as_str())
+                                .unwrap_or("export_output");
+
+                            if let Some(export_code) =
+                                get_base_export_operation(format, output_file)
+                            {
+                                cells.push(Cell::Markdown {
+                                    id: Uuid::new_v4().to_string(),
+                                    metadata: operation_metadata.clone(),
+                                    source: vec![format!(
+                                        "## Operation {}: Export as {}",
+                                        displayed_operation_counter,
+                                        format.to_uppercase()
+                                    )],
+                                });
+
+                                cells.push(Cell::Code {
+                                    id: Uuid::new_v4().to_string(),
+                                    metadata: operation_metadata,
+                                    source: export_code
+                                        .lines()
+                                        .map(|line| format!("{}\n", line))
+                                        .collect(),
+                                    execution_count: None,
+                                    outputs: vec![],
+                                });
+                                println!(
+                                    "Export operation created successfully for format: {}",
+                                    format
+                                );
+                            } else {
+                                println!(
+                                    "Unsupported export format: {}, skipping export operation",
+                                    format
+                                );
+                            }
+                        } else {
+                            eprintln!("No format specified in EXPORT AdditionalData");
+                        }
+                    } else {
+                        eprintln!("Could not parse AdditionalData for EXPORT operation");
+                    }
+                } else {
+                    eprintln!("No AdditionalData found for EXPORT operation");
+                }
+            }
             "GET_TABLE" | "SAVE_TABLE" => {
                 // Skip these operation types as they are not useful for notebook output
                 continue;
@@ -433,6 +489,49 @@ pub fn create_notebook(
                     )],
                 });
             }
+        }
+    }
+
+    // Check if there's no EXPORT operation, add default JSON export
+    let has_export = operations
+        .iter()
+        .any(|op| op.get("OpType").map_or(false, |t| t == "EXPORT"));
+
+    if !has_export {
+        println!("No EXPORT operation found, adding default JSON export");
+        displayed_operation_counter += 1;
+
+        let default_export_metadata = serde_json::json!({
+            "semtparser": {
+                "operation_index": operations.len() + 1,
+                "operation_type": "EXPORT",
+                "operation_data": {
+                    "description": "Default JSON export",
+                    "format": "json"
+                }
+            }
+        });
+
+        if let Some(default_export) = get_base_export_operation("json", "results.json") {
+            cells.push(Cell::Markdown {
+                id: Uuid::new_v4().to_string(),
+                metadata: default_export_metadata.clone(),
+                source: vec![format!(
+                    "## Operation {}: Export as JSON (Default)",
+                    displayed_operation_counter
+                )],
+            });
+
+            cells.push(Cell::Code {
+                id: Uuid::new_v4().to_string(),
+                metadata: default_export_metadata,
+                source: default_export
+                    .lines()
+                    .map(|line| format!("{}\n", line))
+                    .collect(),
+                execution_count: None,
+                outputs: vec![],
+            });
         }
     }
 

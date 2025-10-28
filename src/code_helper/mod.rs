@@ -161,6 +161,32 @@ except Exception as e:
     print(f"An error occurred during extension: {e}")
 "#;
 
+const BASE_EXPORT_CSV_OPERATION: &str = r#"
+# Export as CSV
+try:
+    csv_file = utility.download_csv(
+        dataset_id=dataset_id,
+        table_id=table_id,
+        output_file="__OUTPUT_FILE__"
+    )
+    print(f"✓ CSV downloaded: {csv_file}")
+except Exception as e:
+    print(f"✗ Error downloading CSV: {e}")
+"#;
+
+const BASE_EXPORT_JSON_OPERATION: &str = r#"
+# Export as JSON
+try:
+    json_file = utility.download_json(
+        dataset_id=dataset_id,
+        table_id=table_id,
+        output_file="__OUTPUT_FILE__"
+    )
+    print(f"✓ JSON downloaded: {json_file}")
+except Exception as e:
+    print(f"✗ Error downloading JSON: {e}")
+"#;
+
 pub fn get_base_file_loader_code() -> String {
     let formatted_code = BASE_FILE_CONTENT
         .replace(
@@ -300,4 +326,18 @@ pub fn get_base_propagation_operation(
         .replace("__COL_TO_PROPAGATE__", column_name)
         .replace("__TYPE_TO_PROPAGATE__", &type_str);
     formatted_code
+}
+
+pub fn get_base_export_operation(format: &str, output_file: &str) -> Option<String> {
+    match format.to_lowercase().as_str() {
+        "csv" => {
+            let formatted_code = BASE_EXPORT_CSV_OPERATION.replace("__OUTPUT_FILE__", output_file);
+            Some(formatted_code)
+        }
+        "w3c" | "json" => {
+            let formatted_code = BASE_EXPORT_JSON_OPERATION.replace("__OUTPUT_FILE__", output_file);
+            Some(formatted_code)
+        }
+        _ => None,
+    }
 }
