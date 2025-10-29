@@ -144,8 +144,8 @@ The generated Python code requires:
 You can configure default credentials and API endpoints through environment variables:
 
 ```
-BASE_URL=http://localhost:3003
-API_URL=http://localhost:3003/api
+BASE_URL=http://vm.chronos.disco.unimib.it:3003
+API_URL=http://vm.chronos.disco.unimib.it:3003/api
 USERNAME=your_username
 PASSWORD=your_password
 ```
@@ -156,8 +156,8 @@ These can be placed in a `.env` file in the project root, or can be provided whe
 
 When running the generated Python scripts, you'll be prompted to enter or confirm:
 
-1. Base URL (default: http://localhost:3003)
-2. API URL (default: http://localhost:3003/api) 
+1. Base URL (default: http://vm.chronos.disco.unimib.it:3003)
+2. API URL (default: http://vm.chronos.disco.unimib.it:3003/api)
 3. Dataset ID
 4. Table name
 5. Table ID (after table is added)
@@ -174,8 +174,8 @@ Create a `.env` file in the project root directory with the following configurat
 
 ```env
 # API Configuration
-BASE_URL=http://localhost:3003
-API_URL=http://localhost:3003/api
+BASE_URL=http://vm.chronos.disco.unimib.it:3003
+API_URL=http://vm.chronos.disco.unimib.it:3003/api
 
 # Authentication credentials
 USERNAME=your-email@example.com
@@ -187,8 +187,8 @@ RUST_LOG=info
 
 #### Configuration Parameters
 
-- **BASE_URL**: The base URL of your semT API server (default: `http://localhost:3003`)
-- **API_URL**: The full API endpoint URL (default: `http://localhost:3003/api`)
+- **BASE_URL**: The base URL of your semT API server (default: `http://vm.chronos.disco.unimib.it:3003`)
+- **API_URL**: The full API endpoint URL (default: `http://vm.chronos.disco.unimib.it:3003/api`)
 - **USERNAME**: Your semT account username/email address
 - **PASSWORD**: Your semT account password
 - **RUST_LOG**: Logging level for the application (`debug`, `info`, `warn`, `error`)
@@ -196,8 +196,8 @@ RUST_LOG=info
 #### Example .env file
 
 ```env
-BASE_URL=http://localhost:3003
-API_URL=http://localhost:3003/api
+BASE_URL=http://vm.chronos.disco.unimib.it:3003
+API_URL=http://vm.chronos.disco.unimib.it:3003/api
 USERNAME=agazzi.ruben99@gmail.com
 PASSWORD=your-secure-password
 RUST_LOG=debug

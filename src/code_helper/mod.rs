@@ -191,7 +191,8 @@ pub fn get_base_file_loader_code() -> String {
     let formatted_code = BASE_FILE_CONTENT
         .replace(
             "__API_URL__",
-            &std::env::var("API_URL").unwrap_or("http://localhost:3003/api".to_string()),
+            &std::env::var("API_URL")
+                .unwrap_or("http://vm.chronos.disco.unimib.it:3003/api".to_string()),
         )
         .replace(
             "__USERNAME__",
@@ -203,7 +204,8 @@ pub fn get_base_file_loader_code() -> String {
         )
         .replace(
             "__BASE_URL__",
-            &std::env::var("BASE_URL").unwrap_or("http://localhost:3003".to_string()),
+            &std::env::var("BASE_URL")
+                .unwrap_or("http://vm.chronos.disco.unimib.it:3003".to_string()),
         );
     formatted_code
 }
