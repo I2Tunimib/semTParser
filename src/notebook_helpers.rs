@@ -182,7 +182,11 @@ pub fn create_notebook(
 
     // Add operation cells
     let mut displayed_operation_counter = 0; // Counter for RECONCILIATION, EXTENSION, PROPAGATE_TYPE and EXPORT operations only
-    let mut export_generated = false;
+
+    // Check if there's any EXPORT operation in the operations list
+    let has_export_operation = operations
+        .iter()
+        .any(|op| op.get("OpType") == Some(&"EXPORT".to_string()));
 
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
@@ -459,7 +463,6 @@ pub fn create_notebook(
                                     "Export operation created successfully for format: {}",
                                     format
                                 );
-                                export_generated = true;
                             } else {
                                 println!(
                                     "Unsupported export format: {}, skipping export operation",
@@ -494,8 +497,8 @@ pub fn create_notebook(
         }
     }
 
-    // Check if no export code was generated, add default JSON export
-    if !export_generated {
+    // Check if no export operation was found in the logs, add default JSON export
+    if !has_export_operation {
         println!("No export code generated, adding default JSON export");
         displayed_operation_counter += 1;
 

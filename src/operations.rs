@@ -51,18 +51,28 @@ pub fn logs_from_last_get_table(path: &str) -> Result<Option<Vec<String>>, io::E
     };
     let content = std::fs::read_to_string(path)?;
     let mut found_start = false;
+    let mut found_end = false;
 
     for line in content.lines() {
         if line == start {
             found_start = true;
         }
-        if line == end {
-            break; // Stop reading after reaching the end line
+        if found_start && line == end {
+            found_end = true;
+            // Don't break here - continue reading to capture EXPORT operations after SAVE_TABLE
         }
         if found_start {
             // Skip empty lines
             if !line.trim().is_empty() {
                 result.push(line.to_string());
+            }
+
+            // After SAVE_TABLE, continue reading until we hit another GET_TABLE or SAVE_TABLE
+            if found_end
+                && (line.contains("GET_TABLE") && line != start
+                    || line.contains("SAVE_TABLE") && line != end)
+            {
+                break;
             }
         }
     }
@@ -113,16 +123,6 @@ fn get_extension_key(operation: &HashMap<String, String>) -> String {
     let extender = operation.get("Extender").map_or("", |v| v);
     let additional_data = operation.get("AdditionalData").map_or("", |v| v);
     format!("{}:{}:{}", column_name, extender, additional_data)
-}
-
-fn find_extension(operations: &[HashMap<String, String>], key: &str) -> Option<usize> {
-    operations.iter().position(|op| {
-        if op.get("OpType") == Some(&"EXTENSION".to_string()) {
-            get_extension_key(op) == key
-        } else {
-            false
-        }
-    })
 }
 
 pub fn sort_operations_by_timestamp(
@@ -195,29 +195,56 @@ pub fn process_operations(
                 filtered_operations.push(op);
             }
         } else if operation_type == "EXTENSION" {
-            let extension_key = get_extension_key(&op);
-            if let Some(existing_index) = find_extension(&filtered_operations, &extension_key) {
-                // Replace the existing extension operation with the newer one
-                filtered_operations[existing_index] = op;
-                println!(
-                    "Replacing extension for column: {} with extender at timestamp: {}",
-                    col_name, timestamp
-                );
+            // Check if the last operation on this column is an identical extension
+            let last_op_on_column = filtered_operations
+                .iter()
+                .rev()
+                .find(|existing_op| existing_op.get("ColumnName") == Some(&col_name));
+
+            if let Some(last_op) = last_op_on_column {
+                let extension_key = get_extension_key(&op);
+                let last_extension_key = get_extension_key(last_op);
+
+                if last_op.get("OpType") == Some(&"EXTENSION".to_string())
+                    && extension_key == last_extension_key
+                {
+                    // Identical extension operation, skip it
+                    println!(
+                        "Skipping identical extension for column: {} at timestamp: {}",
+                        col_name, timestamp
+                    );
+                } else {
+                    // Different operation or different extension, keep it
+                    filtered_operations.push(op);
+                }
             } else {
+                // First operation on this column, keep it
                 filtered_operations.push(op);
             }
         } else if operation_type == "EXPORT" {
-            // Check if EXPORT operation with same timestamp already exists
-            if !filtered_operations.iter().any(|existing_op| {
-                existing_op.get("OpType") == Some(&"EXPORT".to_string())
-                    && existing_op.get("timestamp") == op.get("timestamp")
-            }) {
-                filtered_operations.push(op);
+            // Check if the last operation is an identical EXPORT
+            let last_export = filtered_operations
+                .iter()
+                .rev()
+                .find(|existing_op| existing_op.get("OpType") == Some(&"EXPORT".to_string()));
+
+            if let Some(last_exp) = last_export {
+                let current_format = op.get("AdditionalData").map_or("", |v| v);
+                let last_format = last_exp.get("AdditionalData").map_or("", |v| v);
+
+                if current_format == last_format {
+                    // Identical export operation, skip it
+                    println!(
+                        "Skipping identical EXPORT operation at timestamp: {}",
+                        timestamp
+                    );
+                } else {
+                    // Different export format, keep it
+                    filtered_operations.push(op);
+                }
             } else {
-                println!(
-                    "Skipping duplicate EXPORT operation at timestamp: {}",
-                    timestamp
-                );
+                // First export operation, keep it
+                filtered_operations.push(op);
             }
         } else {
             filtered_operations.push(op);

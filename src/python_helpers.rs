@@ -247,7 +247,10 @@ pub fn create_python(
         Err(e) => eprintln!("Error writing table loader: {}", e),
     }
 
-    let mut export_generated = false;
+    // Check if there's any EXPORT operation in the operations list
+    let has_export_operation = operations
+        .iter()
+        .any(|op| op.get("OpType") == Some(&"EXPORT".to_string()));
 
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
@@ -482,7 +485,6 @@ pub fn create_python(
                                             eprintln!("Error writing export operation: {}", e);
                                         } else {
                                             println!("Export operation created successfully for format: {}", format);
-                                            export_generated = true;
                                         }
                                     }
                                     Err(e) => eprintln!("Error getting file writer: {}", e),
@@ -510,8 +512,8 @@ pub fn create_python(
         }
     }
 
-    // Check if no export code was generated, add default JSON export
-    if !export_generated {
+    // Check if no export operation was found in the logs, add default JSON export
+    if !has_export_operation {
         println!("No export code generated, adding default JSON export");
         if let Some(default_export) = get_base_export_operation("json", "results.json") {
             let file_path = Path::new(&path);
