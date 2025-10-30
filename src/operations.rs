@@ -125,16 +125,6 @@ fn find_extension(operations: &[HashMap<String, String>], key: &str) -> Option<u
     })
 }
 
-fn get_sort_priority(op_type: &str) -> u8 {
-    match op_type {
-        "RECONCILIATION" => 0,
-        "PROPAGATE_TYPE" => 1,
-        "EXTENSION" => 2,
-        "EXPORT" => 3,
-        _ => 4,
-    }
-}
-
 pub fn sort_operations_by_timestamp(
     operations: Vec<HashMap<String, String>>,
 ) -> Vec<HashMap<String, String>> {
@@ -148,7 +138,7 @@ pub fn sort_operations_by_timestamp(
         let datetime_b = DateTime::parse_from_rfc3339(b_timestamp);
 
         match (datetime_a, datetime_b) {
-            (Ok(da), Ok(db)) => db.cmp(&da),
+            (Ok(da), Ok(db)) => da.cmp(&db), // Sort in ascending order (oldest first)
             (Ok(_), Err(_)) => std::cmp::Ordering::Less,
             (Err(_), Ok(_)) => std::cmp::Ordering::Greater,
             (Err(_), Err(_)) => std::cmp::Ordering::Equal,
@@ -162,19 +152,47 @@ pub fn process_operations(
 ) -> Vec<HashMap<String, String>> {
     let sorted_op = sort_operations_by_timestamp(operations);
     let mut filtered_operations: Vec<HashMap<String, String>> = Vec::new();
+
     for op in sorted_op {
         let col_name = op.get("ColumnName").cloned().unwrap_or_default();
         let timestamp = op.get("timestamp").cloned().unwrap_or_default();
         let operation_type = op.get("OpType").cloned().unwrap_or_default();
 
         if operation_type == "RECONCILIATION" {
-            if !find_reconciliation(filtered_operations.clone(), &col_name) {
-                filtered_operations.push(op);
+            // Check if there's already a reconciliation for this column
+            let last_reconciliation_index = filtered_operations
+                .iter()
+                .enumerate()
+                .rev()
+                .find(|(_, existing_op)| {
+                    existing_op.get("OpType") == Some(&"RECONCILIATION".to_string())
+                        && existing_op.get("ColumnName") == Some(&col_name)
+                })
+                .map(|(index, _)| index);
+
+            if let Some(last_recon_idx) = last_reconciliation_index {
+                // Check if there's an extension on this column after the last reconciliation
+                let has_extension_after =
+                    filtered_operations[last_recon_idx + 1..]
+                        .iter()
+                        .any(|existing_op| {
+                            existing_op.get("OpType") == Some(&"EXTENSION".to_string())
+                                && existing_op.get("ColumnName") == Some(&col_name)
+                        });
+
+                if has_extension_after {
+                    // There's an extension in between, keep this new reconciliation
+                    filtered_operations.push(op);
+                } else {
+                    // No extension in between, skip this duplicate reconciliation
+                    println!(
+                        "Skipping reconciliation for column: {} at timestamp: {} (no extension in between)",
+                        col_name, timestamp
+                    );
+                }
             } else {
-                println!(
-                    "Skipping reconciliation for column: {} at timestamp: {}",
-                    col_name, timestamp
-                );
+                // First reconciliation for this column, keep it
+                filtered_operations.push(op);
             }
         } else if operation_type == "EXTENSION" {
             let extension_key = get_extension_key(&op);
@@ -205,27 +223,9 @@ pub fn process_operations(
             filtered_operations.push(op);
         }
     }
-    filtered_operations.sort_by(|a, b| {
-        let a_type = a.get("OpType").map(|s| s.as_str()).unwrap_or("");
-        let b_type = b.get("OpType").map(|s| s.as_str()).unwrap_or("");
-        let a_pri = get_sort_priority(a_type);
-        let b_pri = get_sort_priority(b_type);
-        a_pri.cmp(&b_pri)
-    });
-    filtered_operations
-}
 
-pub fn find_reconciliation(operations: Vec<HashMap<String, String>>, column_name: &str) -> bool {
-    for operation in operations {
-        if let Some(op_type) = operation.get("OpType") {
-            if op_type == "RECONCILIATION"
-                && operation.get("ColumnName") == Some(&column_name.to_string())
-            {
-                return true;
-            }
-        }
-    }
-    false
+    // Keep the timestamp order - don't re-sort by priority
+    filtered_operations
 }
 
 pub fn parse_json(json_string: &str) -> Option<Value> {
