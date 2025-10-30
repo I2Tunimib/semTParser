@@ -16,12 +16,12 @@ def get_input_with_default(prompt, default):
     return user_input if user_input else default
 
 base_url = get_input_with_default("Enter base URL or press Enter to keep default", "__BASE_URL__")
+api_url = base_url + "/api"
 username = get_input_with_default("Enter your username", "__USERNAME__")
 default_password = "__PASSWORD__"
 password_prompt = f"Enter your password (default: use stored password): "
 password_input = getpass.getpass(password_prompt)
 password = password_input if password_input else default_password
-api_url = get_input_with_default("Enter API URL or press Enter to keep default", "__API_URL__")
 
 Auth_manager = AuthManager(api_url, username, password)
 token = Auth_manager.get_token()
@@ -189,11 +189,6 @@ except Exception as e:
 
 pub fn get_base_file_loader_code() -> String {
     let formatted_code = BASE_FILE_CONTENT
-        .replace(
-            "__API_URL__",
-            &std::env::var("API_URL")
-                .unwrap_or("http://vm.chronos.disco.unimib.it:3003/api".to_string()),
-        )
         .replace(
             "__USERNAME__",
             &std::env::var("USERNAME").unwrap_or_default(),

@@ -182,6 +182,7 @@ pub fn create_notebook(
 
     // Add operation cells
     let mut displayed_operation_counter = 0; // Counter for RECONCILIATION, EXTENSION, PROPAGATE_TYPE and EXPORT operations only
+    let mut export_generated = false;
 
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
@@ -458,6 +459,7 @@ pub fn create_notebook(
                                     "Export operation created successfully for format: {}",
                                     format
                                 );
+                                export_generated = true;
                             } else {
                                 println!(
                                     "Unsupported export format: {}, skipping export operation",
@@ -492,13 +494,9 @@ pub fn create_notebook(
         }
     }
 
-    // Check if there's no EXPORT operation, add default JSON export
-    let has_export = operations
-        .iter()
-        .any(|op| op.get("OpType").map_or(false, |t| t == "EXPORT"));
-
-    if !has_export {
-        println!("No EXPORT operation found, adding default JSON export");
+    // Check if no export code was generated, add default JSON export
+    if !export_generated {
+        println!("No export code generated, adding default JSON export");
         displayed_operation_counter += 1;
 
         let default_export_metadata = serde_json::json!({

@@ -83,10 +83,7 @@ pub fn create_notebook(
                     "password = \"{}\"\n",
                     env::var("PASSWORD").unwrap_or_else(|_| "__PASSWORD__".to_string())
                 ),
-                format!(
-                    "api_url = \"{}\"\n",
-                    env::var("API_URL").unwrap_or_else(|_| "__API_URL__".to_string())
-                ),
+                "api_url = base_url + \"/api\"\n".to_string(),
                 "\n".to_string(),
                 "Auth_manager = TokenManager(api_url, username, password)\n".to_string(),
                 "token = Auth_manager.get_token()\n".to_string(),
