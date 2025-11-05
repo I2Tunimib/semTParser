@@ -1,6 +1,6 @@
 # semTParser
 
-A Rust-based tool for parsing and processing semT (Semantic Table) logs to generate Python code for table operations including reconciliation and extension operations.
+A Rust-based tool for parsing and processing semT (Semantic Table) logs to generate Python code for table operations including reconciliation, extension, and modification operations.
 
 ---
 
@@ -11,16 +11,16 @@ A Rust-based tool for parsing and processing semT (Semantic Table) logs to gener
 
 ## Overview
 
-semTParser analyzes log files to extract table operations and automatically generates Python scripts that can reproduce those operations. It processes logs to identify reconciliation and extension operations, then creates corresponding Python code to execute these operations on CSV tables.
+semTParser analyzes log files to extract table operations and automatically generates Python scripts that can reproduce those operations. It processes logs to identify reconciliation, extension, and modification operations, then creates corresponding Python code to execute these operations on CSV tables.
 
 ## Features
 
 - **Log Parsing**: Analyzes semT log files to extract operations between GET_TABLE and SAVE_TABLE entries
-- **Operation Processing**: Handles RECONCILIATION and EXTENSION operations with detailed parsing of additional data
+- **Operation Processing**: Handles RECONCILIATION, EXTENSION, and MODIFICATION operations with detailed parsing of additional data
 - **Python Code Generation**: Automatically creates Python scripts with SemT_py package integration for table operations
 - **CSV Table Support**: Works with CSV files as input tables
 - **Timestamped Output**: Generates uniquely named output files with timestamps
-- **Jupyter Notebook Support**: Includes capabilities for generating Jupyter notebooks for data operations _(WIP)_
+- **Jupyter Notebook Support**: Generates interactive Jupyter notebooks with input prompts (no command-line arguments) _(WIP)_
 
 ## Installation
 
@@ -96,12 +96,13 @@ You can build the tool for different platforms using GitHub Actions or the `cros
 
 1. **Log Analysis**: The tool reads the specified log file in reverse to find the most recent GET_TABLE operation
 2. **Operation Extraction**: Extracts all operations between the last GET_TABLE and the first SAVE_TABLE entry
-3. **Processing**: Parses and categorizes operations (RECONCILIATION, EXTENSION, etc.) with detailed JSON parsing of additional data
+3. **Processing**: Parses and categorizes operations (RECONCILIATION, EXTENSION, MODIFICATION, etc.) with detailed JSON parsing of additional data
 4. **Code Generation**: Creates a timestamped Python file with:
    - Integration with SemT_py package for API interactions
    - Table loading code for the specified CSV file using pandas
    - Reconciliation operations with specified reconcilers and columns
    - Extension operations with properties and extenders
+   - Modification operations with specified modifiers and properties
    - Authentication and token management setup
    - Dataset and table management functionality
 
@@ -119,7 +120,49 @@ The tool generates Python files with names like `base_file_2025-06-26_08-33.py` 
 - **API Configuration**: Base URL, authentication, and API endpoint setup
 - **Operation Execution**: Reconciliation operations with specified reconcilers and columns
 - **Extension Processing**: Extension operations with properties and extenders parsed from JSON
+- **Modification Processing**: Modification operations with modifiers and additional data parsed from JSON
 - **Dataset Management**: Functions to add tables to datasets with proper naming
+- **Command-line Arguments**: Support for automation with parameters like --base-url, --username, --password, --dataset-id, --table-name, --csv-file
+
+## Generated Python Script Usage
+
+The generated Python scripts support command-line arguments for automation and CI/CD integration. If arguments are not provided, the script will prompt interactively.
+
+### Command-line Arguments
+
+- `--base-url`: Base URL for the SemT API (default: prompts for input)
+- `--username`: Username for authentication (default: prompts for input)
+- `--password`: Password for authentication (default: prompts securely with getpass)
+- `--dataset-id`: Dataset ID to use (default: prompts for input)
+- `--table-name`: Name for the table to be created (default: prompts for input)
+- `--csv-file`: Path to the CSV file to load (default: prompts for input)
+
+### Usage Examples
+
+**Run with all parameters (fully automated):**
+```bash
+python base_file_2025-11-05_10-23.py --base-url http://localhost:3003 --username myuser --password mypass --dataset-id 123 --table-name mytable --csv-file data.csv
+```
+
+**Run with some parameters (prompts for missing ones):**
+```bash
+python base_file_2025-11-05_10-23.py --base-url http://localhost:3003 --username myuser
+```
+
+**Run without parameters (all interactive prompts):**
+```bash
+python base_file_2025-11-05_10-23.py
+```
+
+**View help:**
+```bash
+python base_file_2025-11-05_10-23.py --help
+```
+
+### Notebook vs Python Script
+
+- **Python Scripts**: Include command-line argument parsing for automation
+- **Jupyter Notebooks**: Remain interactive with input prompts (no command-line arguments)
 
 ## Dependencies
 
@@ -141,11 +184,10 @@ The generated Python code requires:
 
 ### Environment Variables
 
-You can configure default credentials and API endpoints through environment variables:
+You can configure default credentials and base URL through environment variables:
 
 ```
 BASE_URL=http://vm.chronos.disco.unimib.it:3003
-API_URL=http://vm.chronos.disco.unimib.it:3003/api
 USERNAME=your_username
 PASSWORD=your_password
 ```
@@ -157,10 +199,9 @@ These can be placed in a `.env` file in the project root, or can be provided whe
 When running the generated Python scripts, you'll be prompted to enter or confirm:
 
 1. Base URL (default: http://vm.chronos.disco.unimib.it:3003)
-2. API URL (default: http://vm.chronos.disco.unimib.it:3003/api)
-3. Dataset ID
-4. Table name
-5. Table ID (after table is added)
+2. Dataset ID
+3. Table name
+4. Table ID (after table is added)
 
 This allows easy customization of endpoints and parameters without modifying the code.
 
@@ -175,7 +216,6 @@ Create a `.env` file in the project root directory with the following configurat
 ```env
 # API Configuration
 BASE_URL=http://vm.chronos.disco.unimib.it:3003
-API_URL=http://vm.chronos.disco.unimib.it:3003/api
 
 # Authentication credentials
 USERNAME=your-email@example.com
@@ -188,7 +228,6 @@ RUST_LOG=info
 #### Configuration Parameters
 
 - **BASE_URL**: The base URL of your semT API server (default: `http://vm.chronos.disco.unimib.it:3003`)
-- **API_URL**: The full API endpoint URL (default: `http://vm.chronos.disco.unimib.it:3003/api`)
 - **USERNAME**: Your semT account username/email address
 - **PASSWORD**: Your semT account password
 - **RUST_LOG**: Logging level for the application (`debug`, `info`, `warn`, `error`)
@@ -197,7 +236,6 @@ RUST_LOG=info
 
 ```env
 BASE_URL=http://vm.chronos.disco.unimib.it:3003
-API_URL=http://vm.chronos.disco.unimib.it:3003/api
 USERNAME=agazzi.ruben99@gmail.com
 PASSWORD=your-secure-password
 RUST_LOG=debug
@@ -220,6 +258,12 @@ The tool currently processes the following log operation types:
 - Parses extender service IDs (e.g., `wikidataPropertySPARQL`)
 - Extracts property specifications from additional data
 - Creates extension operations with proper property handling
+
+### MODIFICATION Operations
+
+- Parses modifier service IDs (e.g., `dateFormatter`)
+- Extracts modification properties and additional data from JSON
+- Generates Python code with appropriate modification manager calls
 
 ### Log Format
 

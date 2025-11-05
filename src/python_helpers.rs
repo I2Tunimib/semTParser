@@ -1,7 +1,8 @@
 use crate::code_helper::{
-    get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-    get_base_export_operation, get_base_extension_operation, get_base_file_loader_code,
-    get_base_propagation_operation, get_base_reconciliation_operation,
+    get_base_export_operation, get_base_extension_operation, get_base_modification_operation,
+    get_base_propagation_operation, get_base_python_dataset_loader,
+    get_base_python_dataset_loader_with_column_deletion, get_base_python_file_loader_code,
+    get_base_reconciliation_operation,
 };
 use crate::operations::{parse_deleted_columns, parse_json};
 use serde_json::Value;
@@ -19,7 +20,7 @@ pub struct Args {
 pub fn create_base_file(path: &str) -> Result<String, Error> {
     let path = Path::new(path);
     let mut file = get_file_writer(path)?;
-    let formatted_code = get_base_file_loader_code();
+    let formatted_code = get_base_python_file_loader_code();
     file.write_all(formatted_code.as_bytes())?;
     Ok(path.to_string_lossy().to_string())
 }
@@ -36,13 +37,13 @@ pub fn write_table_loader(
 
     let formatted_code = if table_path.exists() {
         match deleted_columns {
-            Some(cols) if !cols.is_empty() => get_base_dataset_loader_with_column_deletion(
+            Some(cols) if !cols.is_empty() => get_base_python_dataset_loader_with_column_deletion(
                 table_path_str,
                 dataset_id,
                 table_name,
                 cols,
             ),
-            _ => get_base_dataset_loader(table_path_str, dataset_id, table_name),
+            _ => get_base_python_dataset_loader(table_path_str, dataset_id, table_name),
         }
     } else {
         // If table file doesn't exist, still generate the loader code but warn the user
@@ -51,13 +52,13 @@ pub fn write_table_loader(
             table_path_str
         );
         match deleted_columns {
-            Some(cols) if !cols.is_empty() => get_base_dataset_loader_with_column_deletion(
+            Some(cols) if !cols.is_empty() => get_base_python_dataset_loader_with_column_deletion(
                 table_path_str,
                 dataset_id,
                 table_name,
                 cols,
             ),
-            _ => get_base_dataset_loader(table_path_str, dataset_id, table_name),
+            _ => get_base_python_dataset_loader(table_path_str, dataset_id, table_name),
         }
     };
 
@@ -109,6 +110,20 @@ pub fn create_propagation_operation(
     file.write_all(formatted_code.as_bytes())?;
     Ok(())
 }
+
+pub fn create_modification_operation(
+    file_path_str: &str,
+    column_name: &str,
+    modifier_name: &str,
+    props: &Value,
+) -> Result<(), Error> {
+    let file_path = Path::new(file_path_str);
+    let mut file = get_file_writer(file_path)?;
+
+    let formatted_code = get_base_modification_operation(column_name, modifier_name, props);
+    file.write_all(formatted_code.as_bytes())?;
+    Ok(())
+}
 fn get_file_writer(file_path: &Path) -> Result<File, Error> {
     if file_path.exists() {
         OpenOptions::new().write(true).append(true).open(file_path)
@@ -155,12 +170,15 @@ fn write_operation_summary(
     let file_path = Path::new(file_path_str);
     let mut file = get_file_writer(file_path)?;
 
-    // Filter operations to only include RECONCILIATION and EXTENSION
+    // Filter operations to only include RECONCILIATION, EXTENSION, PROPAGATE_TYPE and MODIFICATION
     let displayed_operations: Vec<&HashMap<String, String>> = operations
         .iter()
         .filter(|op| {
             let op_type = op.get("OpType").map_or("UNKNOWN", |s| s.as_str());
-            op_type == "RECONCILIATION" || op_type == "EXTENSION" || op_type == "PROPAGATE_TYPE"
+            op_type == "RECONCILIATION"
+                || op_type == "EXTENSION"
+                || op_type == "PROPAGATE_TYPE"
+                || op_type == "MODIFICATION"
         })
         .collect();
 
@@ -256,8 +274,8 @@ pub fn create_python(
         let operation_type = operation.get("OpType").unwrap();
 
         match operation_type.as_str() {
-            "RECONCILIATION" | "EXTENSION" | "PROPAGATE_TYPE" | "EXPORT" => {
-                // Only write separator and generate code for RECONCILIATION, EXTENSION, PROPAGATE_TYPE and EXPORT operations
+            "RECONCILIATION" | "EXTENSION" | "PROPAGATE_TYPE" | "EXPORT" | "MODIFICATION" => {
+                // Only write separator and generate code for RECONCILIATION, EXTENSION, PROPAGATE_TYPE, EXPORT and MODIFICATION operations
                 // Count displayed operations by filtering up to current position
                 let displayed_operation_number = operations[..=index]
                     .iter()
@@ -267,6 +285,7 @@ pub fn create_python(
                             || op_type == "EXTENSION"
                             || op_type == "PROPAGATE_TYPE"
                             || op_type == "EXPORT"
+                            || op_type == "MODIFICATION"
                     })
                     .count();
 
@@ -487,7 +506,9 @@ pub fn create_python(
                                             println!("Export operation created successfully for format: {}", format);
                                         }
                                     }
-                                    Err(e) => eprintln!("Error getting file writer: {}", e),
+                                    Err(e) => {
+                                        eprintln!("Error getting file writer: {}", e);
+                                    }
                                 }
                             } else {
                                 println!(
@@ -503,6 +524,27 @@ pub fn create_python(
                     }
                 } else {
                     eprintln!("No AdditionalData found for EXPORT operation");
+                }
+            }
+            "MODIFICATION" => {
+                // Handle modification operation
+                let modifier_name = operation.get("Modifier").unwrap();
+                let col_name = operation.get("ColumnName").unwrap();
+
+                let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                match create_modification_operation(
+                    path.as_str(),
+                    col_name,
+                    modifier_name,
+                    &additional_data,
+                ) {
+                    Ok(_) => {
+                        println!("Modification operation created successfully.")
+                    }
+                    Err(e) => {
+                        eprintln!("Error creating modification operation: {}", e)
+                    }
                 }
             }
             _ => {

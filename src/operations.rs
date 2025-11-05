@@ -125,6 +125,13 @@ fn get_extension_key(operation: &HashMap<String, String>) -> String {
     format!("{}:{}:{}", column_name, extender, additional_data)
 }
 
+fn get_modification_key(operation: &HashMap<String, String>) -> String {
+    let column_name = operation.get("ColumnName").map_or("", |v| v);
+    let modifier = operation.get("Modifier").map_or("", |v| v);
+    let additional_data = operation.get("AdditionalData").map_or("", |v| v);
+    format!("{}:{}:{}", column_name, modifier, additional_data)
+}
+
 pub fn sort_operations_by_timestamp(
     operations: Vec<HashMap<String, String>>,
 ) -> Vec<HashMap<String, String>> {
@@ -215,6 +222,33 @@ pub fn process_operations(
                     );
                 } else {
                     // Different operation or different extension, keep it
+                    filtered_operations.push(op);
+                }
+            } else {
+                // First operation on this column, keep it
+                filtered_operations.push(op);
+            }
+        } else if operation_type == "MODIFICATION" {
+            // Check if the last operation on this column is an identical modification
+            let last_op_on_column = filtered_operations
+                .iter()
+                .rev()
+                .find(|existing_op| existing_op.get("ColumnName") == Some(&col_name));
+
+            if let Some(last_op) = last_op_on_column {
+                let modification_key = get_modification_key(&op);
+                let last_modification_key = get_modification_key(last_op);
+
+                if last_op.get("OpType") == Some(&"MODIFICATION".to_string())
+                    && modification_key == last_modification_key
+                {
+                    // Identical modification operation, skip it
+                    println!(
+                        "Skipping identical modification for column: {} at timestamp: {}",
+                        col_name, timestamp
+                    );
+                } else {
+                    // Different operation or different modification, keep it
                     filtered_operations.push(op);
                 }
             } else {

@@ -5,9 +5,10 @@ use uuid::Uuid;
 
 use crate::{
     code_helper::{
-        get_base_dataset_loader, get_base_dataset_loader_with_column_deletion,
-        get_base_export_operation, get_base_extension_operation, get_base_file_loader_code,
-        get_base_propagation_operation, get_base_reconciliation_operation,
+        get_base_export_operation, get_base_extension_operation, get_base_modification_operation,
+        get_base_notebook_dataset_loader, get_base_notebook_dataset_loader_with_column_deletion,
+        get_base_notebook_file_loader_code, get_base_propagation_operation,
+        get_base_reconciliation_operation,
     },
     operations::{parse_deleted_columns, parse_json},
 };
@@ -145,8 +146,8 @@ pub fn create_notebook(
     // Add initial imports cell as part of Operation 0
     cells.push(Cell::Code {
         id: Uuid::new_v4().to_string(),
-        metadata: operation_0_metadata.clone(),
-        source: get_base_file_loader_code()
+        metadata: serde_json::json!({}),
+        source: get_base_notebook_file_loader_code()
             .lines()
             .map(|line| format!("{}\n", line))
             .collect(),
@@ -156,13 +157,13 @@ pub fn create_notebook(
 
     // Data loading cell with optional column deletion as part of Operation 0
     let dataset_loader_code = match deleted_columns {
-        Some(ref cols) => get_base_dataset_loader_with_column_deletion(
+        Some(ref cols) => get_base_notebook_dataset_loader_with_column_deletion(
             args.table_file.as_str(),
             used_dataset_id,
             table_name.as_str(),
             cols.clone(),
         ),
-        None => get_base_dataset_loader(
+        None => get_base_notebook_dataset_loader(
             args.table_file.as_str(),
             used_dataset_id,
             table_name.as_str(),
@@ -478,6 +479,38 @@ pub fn create_notebook(
                 } else {
                     eprintln!("No AdditionalData found for EXPORT operation");
                 }
+            }
+            "MODIFICATION" => {
+                displayed_operation_counter += 1; // Increment counter for displayed operations
+
+                let modifier_name = operation.get("Modifier").unwrap();
+                let col_name = operation.get("ColumnName").unwrap();
+
+                let additional_data = parse_json(operation.get("AdditionalData").unwrap()).unwrap();
+
+                cells.push(Cell::Markdown {
+                    id: Uuid::new_v4().to_string(),
+                    metadata: operation_metadata.clone(),
+                    source: vec![format!(
+                        "## Operation {}: Modification for column {} by {}",
+                        displayed_operation_counter, col_name, modifier_name
+                    )],
+                });
+
+                cells.push(Cell::Code {
+                    id: Uuid::new_v4().to_string(),
+                    metadata: operation_metadata,
+                    source: get_base_modification_operation(
+                        &col_name,
+                        modifier_name,
+                        &additional_data,
+                    )
+                    .lines()
+                    .map(|line| format!("{}\n", line))
+                    .collect(),
+                    execution_count: None,
+                    outputs: vec![],
+                });
             }
             "GET_TABLE" | "SAVE_TABLE" => {
                 // Skip these operation types as they are not useful for notebook output

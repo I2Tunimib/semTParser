@@ -1,6 +1,59 @@
 use serde_json::Value;
 
-const BASE_FILE_CONTENT: &str = r#"
+const BASE_PYTHON_FILE_CONTENT: &str = r#"
+import semt_py
+import getpass
+import argparse
+from semt_py import AuthManager
+from semt_py.extension_manager import ExtensionManager
+from semt_py.reconciliation_manager import ReconciliationManager
+from semt_py.utils import Utility
+from semt_py.dataset_manager import DatasetManager
+from semt_py.table_manager import TableManager
+from semt_py.modification_manager import ModificationManager
+
+def get_input_with_default(prompt, default):
+    user_input = input(f"{prompt} (default: {default}): ").strip()
+    return user_input if user_input else default
+
+parser = argparse.ArgumentParser(description="SemT Table Processor")
+parser.add_argument('--base-url', default=None, help='Base URL for the API')
+parser.add_argument('--username', default=None, help='Username for authentication')
+parser.add_argument('--password', default=None, help='Password for authentication')
+parser.add_argument('--dataset-id', default=None, help='Dataset ID')
+parser.add_argument('--table-name', default=None, help='Table name')
+parser.add_argument('--csv-file', default=None, help='Path to CSV file')
+args = parser.parse_args()
+
+if args.base_url:
+    base_url = args.base_url
+else:
+    base_url = get_input_with_default("Enter base URL or press Enter to keep default", "__BASE_URL__")
+api_url = base_url + "/api"
+if args.username:
+    username = args.username
+else:
+    username = get_input_with_default("Enter your username", "__USERNAME__")
+if args.password:
+    password = args.password
+else:
+    default_password = "__PASSWORD__"
+    password_prompt = f"Enter your password (default: use stored password): "
+    password_input = getpass.getpass(password_prompt)
+    password = password_input if password_input else default_password
+
+Auth_manager = AuthManager(api_url, username, password)
+token = Auth_manager.get_token()
+reconciliation_manager = ReconciliationManager(base_url, Auth_manager)
+dataset_manager = DatasetManager(base_url, Auth_manager)
+table_manager = TableManager(base_url, Auth_manager)
+extension_manager = ExtensionManager(base_url, token)
+utility = Utility(base_url, Auth_manager)
+manager = ModificationManager(base_url, token)
+
+"#;
+
+const BASE_NOTEBOOK_FILE_CONTENT: &str = r#"
 import semt_py
 import getpass
 from semt_py import AuthManager
@@ -30,11 +83,51 @@ dataset_manager = DatasetManager(base_url, Auth_manager)
 table_manager = TableManager(base_url, Auth_manager)
 extension_manager = ExtensionManager(base_url, token)
 utility = Utility(base_url, Auth_manager)
-manager = ModificationManager()
+manager = ModificationManager(base_url, token)
 
 "#;
 
-const BASE_DATASET_LOAD_DATAFRAME: &str = r#"
+const BASE_PYTHON_DATASET_LOAD_DATAFRAME: &str = r#"
+import pandas as pd
+
+if args.dataset_id:
+    dataset_id = args.dataset_id
+else:
+    dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
+if args.table_name:
+    table_name = args.table_name
+else:
+    table_name = get_input_with_default("Enter table_name or press Enter to keep default", "__TABLE_NAME__")
+
+if args.csv_file:
+    filename = args.csv_file
+else:
+    filename = get_input_with_default("Enter path to CSV file or press Enter to keep default", "__TABLE_PATH__")
+df = pd.read_csv(filename)
+
+columns_to_delete = [__COLUMNS_TO_DELETE__]
+if columns_to_delete and columns_to_delete != ['']:
+    for col in columns_to_delete:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+            print(f"Deleted column: {col}")
+        else:
+            print(f"Column '{col}' not found in table")
+    print(f"Columns deleted: {[col for col in columns_to_delete if col in df.columns]}")
+
+table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
+
+print(f"Table loaded successfully: {message}")
+try:
+    from IPython.display import display
+    print("Showing dataframe head:")
+    display(df.head())
+except Exception as e:
+    print(f"Could not display DataFrame head: {e}")
+    print(df.head().to_string())
+"#;
+
+const BASE_NOTEBOOK_DATASET_LOAD_DATAFRAME: &str = r#"
 import pandas as pd
 
 dataset_id = get_input_with_default("Enter dataset_id or press Enter to keep default", "__DATASET_ID__")
@@ -174,6 +267,37 @@ except Exception as e:
     print(f"✗ Error downloading CSV: {e}")
 "#;
 
+const BASE_MODIFICATION_OPERATION: &str = r#"
+try:
+    table_data = table_manager.get_table(dataset_id, table_id)
+
+    modified_table, payload = manager.modify(
+        table=table_data,
+        column_name="__COLUMN_NAME__",
+        modifier_name="__MODIFIER_NAME__",
+        props=__MODIFICATION_PROPS__
+    )
+
+    successMessage, sentPayload = utility.push_to_backend(
+        dataset_id,
+        table_id,
+        payload,
+        debug=False
+    )
+
+    print(successMessage)
+    html_table = Utility.display_json_table(
+        json_table=modified_table,
+        number_of_rows=4,
+        from_row=0,
+    )
+    if html_table is not None:
+        from IPython.display import display
+        display(html_table)
+except Exception as e:
+    print(f"An error occurred during modification: {e}")
+"#;
+
 const BASE_EXPORT_JSON_OPERATION: &str = r#"
 # Export as JSON
 try:
@@ -187,8 +311,8 @@ except Exception as e:
     print(f"✗ Error downloading JSON: {e}")
 "#;
 
-pub fn get_base_file_loader_code() -> String {
-    let formatted_code = BASE_FILE_CONTENT
+pub fn get_base_python_file_loader_code() -> String {
+    let formatted_code = BASE_PYTHON_FILE_CONTENT
         .replace(
             "__USERNAME__",
             &std::env::var("USERNAME").unwrap_or_default(),
@@ -205,8 +329,30 @@ pub fn get_base_file_loader_code() -> String {
     formatted_code
 }
 
-pub fn get_base_dataset_loader(table_path: &str, dataset_id: &str, table_name: &str) -> String {
-    let formatted_code = BASE_DATASET_LOAD_DATAFRAME
+pub fn get_base_notebook_file_loader_code() -> String {
+    let formatted_code = BASE_NOTEBOOK_FILE_CONTENT
+        .replace(
+            "__USERNAME__",
+            &std::env::var("USERNAME").unwrap_or_default(),
+        )
+        .replace(
+            "__PASSWORD__",
+            &std::env::var("PASSWORD").unwrap_or_default(),
+        )
+        .replace(
+            "__BASE_URL__",
+            &std::env::var("BASE_URL")
+                .unwrap_or("http://vm.chronos.disco.unimib.it:3003".to_string()),
+        );
+    formatted_code
+}
+
+pub fn get_base_python_dataset_loader(
+    table_path: &str,
+    dataset_id: &str,
+    table_name: &str,
+) -> String {
+    let formatted_code = BASE_PYTHON_DATASET_LOAD_DATAFRAME
         .replace("__TABLE_PATH__", table_path)
         .replace("__DATASET_ID__", dataset_id)
         .replace("__TABLE_NAME__", table_name)
@@ -214,7 +360,7 @@ pub fn get_base_dataset_loader(table_path: &str, dataset_id: &str, table_name: &
     formatted_code
 }
 
-pub fn get_base_dataset_loader_with_column_deletion(
+pub fn get_base_python_dataset_loader_with_column_deletion(
     table_path: &str,
     dataset_id: &str,
     table_name: &str,
@@ -230,7 +376,44 @@ pub fn get_base_dataset_loader_with_column_deletion(
             .join(", ")
     };
 
-    let formatted_code = BASE_DATASET_LOAD_DATAFRAME
+    let formatted_code = BASE_PYTHON_DATASET_LOAD_DATAFRAME
+        .replace("__TABLE_PATH__", table_path)
+        .replace("__DATASET_ID__", dataset_id)
+        .replace("__TABLE_NAME__", table_name)
+        .replace("__COLUMNS_TO_DELETE__", &columns_to_delete_str);
+    formatted_code
+}
+
+pub fn get_base_notebook_dataset_loader(
+    table_path: &str,
+    dataset_id: &str,
+    table_name: &str,
+) -> String {
+    let formatted_code = BASE_NOTEBOOK_DATASET_LOAD_DATAFRAME
+        .replace("__TABLE_PATH__", table_path)
+        .replace("__DATASET_ID__", dataset_id)
+        .replace("__TABLE_NAME__", table_name)
+        .replace("__COLUMNS_TO_DELETE__", "");
+    formatted_code
+}
+
+pub fn get_base_notebook_dataset_loader_with_column_deletion(
+    table_path: &str,
+    dataset_id: &str,
+    table_name: &str,
+    columns_to_delete: Vec<String>,
+) -> String {
+    let columns_to_delete_str = if columns_to_delete.is_empty() {
+        "".to_string()
+    } else {
+        columns_to_delete
+            .iter()
+            .map(|col| format!("'{}'", col))
+            .collect::<Vec<String>>()
+            .join(", ")
+    };
+
+    let formatted_code = BASE_NOTEBOOK_DATASET_LOAD_DATAFRAME
         .replace("__TABLE_PATH__", table_path)
         .replace("__DATASET_ID__", dataset_id)
         .replace("__TABLE_NAME__", table_name)
@@ -322,6 +505,19 @@ pub fn get_base_propagation_operation(
     let formatted_code = BASE_PROPAGATION_OPERATION
         .replace("__COL_TO_PROPAGATE__", column_name)
         .replace("__TYPE_TO_PROPAGATE__", &type_str);
+    formatted_code
+}
+
+pub fn get_base_modification_operation(
+    column_name: &str,
+    modifier_name: &str,
+    props: &Value,
+) -> String {
+    let props_str = value_to_python(props);
+    let formatted_code = BASE_MODIFICATION_OPERATION
+        .replace("__COLUMN_NAME__", column_name)
+        .replace("__MODIFIER_NAME__", modifier_name)
+        .replace("__MODIFICATION_PROPS__", &props_str);
     formatted_code
 }
 
