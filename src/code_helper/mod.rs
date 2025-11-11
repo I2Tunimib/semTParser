@@ -181,10 +181,16 @@ try:
     )
 
     print(successMessage)
+
+    # Display only the reconciled column with its metadata
+    affected_columns = [column_name] + [col + "_metadata" for col in [column_name]]
+    print(f"Displaying reconciled column: {column_name}")
+
     html_table = Utility.display_json_table(
         json_table=reconciled_table,
         number_of_rows=4,
         from_row=0,
+        labels=[column_name]
     )
     if html_table is not None:
         from IPython.display import display
@@ -196,8 +202,9 @@ except Exception as e:
 const BASE_PROPAGATION_OPERATION: &str = r#"
 try:
     type_obj = __TYPE_TO_PROPAGATE__
+    propagated_column = '__COL_TO_PROPAGATE__'
 
-    table_data, backend_payload = manager.propagate_type(table_data, '__COL_TO_PROPAGATE__', type_obj)
+    table_data, backend_payload = manager.propagate_type(table_data, propagated_column, type_obj)
 
 
     successMessage, sentPayload = utility.push_to_backend(
@@ -208,10 +215,15 @@ try:
     )
 
     print(successMessage)
+
+    # Display only the propagated column
+    print(f"Displaying propagated column: {propagated_column}")
+
     html_table = Utility.display_json_table(
         json_table=table_data,
         number_of_rows=4,
         from_row=0,
+        labels=[propagated_column]
     )
     if html_table is not None:
         from IPython.display import display
@@ -225,9 +237,13 @@ const BASE_EXTENSION_OPERATION: &str = r#"
 try:
     table_data = table_manager.get_table(dataset_id, table_id)
 
+    # Store columns before extension
+    prev_columns = set(table_data['columns'].keys())
+    base_column = "__COLUMN_NAME__"
+
     extended_table, extension_payload = extension_manager.extend_column(
         table=table_data,
-        column_name="__COLUMN_NAME__",
+        column_name=base_column,
         extender_id="__EXTENDER_ID__",
         properties=__EXTENSION_PROPERTIES__,
         other_params={__EXTENSION_PARAMS__}
@@ -242,10 +258,20 @@ try:
     )
 
     print(successMessage)
+
+    # Display only newly added columns from extension
+    current_columns = set(extended_table['columns'].keys())
+    new_columns = list(current_columns - prev_columns)
+
+    # Include the base column and the new extended columns
+    affected_columns = [base_column] + new_columns
+    print(f"Displaying base column '{base_column}' and new extended columns: {new_columns}")
+
     html_table = Utility.display_json_table(
         json_table=extended_table,
         number_of_rows=4,
         from_row=0,
+        labels=affected_columns
     )
     if html_table is not None:
         from IPython.display import display
@@ -270,10 +296,11 @@ except Exception as e:
 const BASE_MODIFICATION_OPERATION: &str = r#"
 try:
     table_data = table_manager.get_table(dataset_id, table_id)
+    modified_column = "__COLUMN_NAME__"
 
     modified_table, payload = manager.modify(
         table=table_data,
-        column_name="__COLUMN_NAME__",
+        column_name=modified_column,
         modifier_name="__MODIFIER_NAME__",
         props=__MODIFICATION_PROPS__
     )
@@ -286,10 +313,15 @@ try:
     )
 
     print(successMessage)
+
+    # Display only the modified column
+    print(f"Displaying modified column: {modified_column}")
+
     html_table = Utility.display_json_table(
         json_table=modified_table,
         number_of_rows=4,
         from_row=0,
+        labels=[modified_column]
     )
     if html_table is not None:
         from IPython.display import display

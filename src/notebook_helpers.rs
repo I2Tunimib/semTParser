@@ -68,8 +68,14 @@ pub fn create_notebook(
     let mut cells = vec![];
 
     // Add operation summary cell as the first cell
-    // Filter operations to only include RECONCILIATION and EXTENSION
-    let mut displayed_operations: Vec<&HashMap<String, String>> = operations.iter().collect();
+    // Filter operations to exclude GET_TABLE and SAVE_TABLE
+    let mut displayed_operations: Vec<&HashMap<String, String>> = operations
+        .iter()
+        .filter(|op| {
+            let op_type = op.get("OpType").map_or("", |s| s.as_str());
+            op_type != "GET_TABLE" && op_type != "SAVE_TABLE"
+        })
+        .collect();
 
     // Sort operations by timestamp in ascending order
     displayed_operations.sort_by(|a, b| {
@@ -101,23 +107,70 @@ pub fn create_notebook(
         let column_name = operation.get("ColumnName").map_or("N/A", |s| s.as_str());
         let timestamp = operation.get("timestamp").map_or("N/A", |s| s.as_str());
 
-        // Show extender/reconciler information
-        let tool_info = match op_type {
+        // Show extender/reconciler/modifier information and format appropriately
+        let (_tool_info, display_text) = match op_type {
             "RECONCILIATION" => {
                 let reconciler_id = operation.get("Reconciler").map_or("N/A", |s| s.as_str());
-                format!(" using **{}** reconciler", reconciler_id)
+                let info = format!(" using **{}** reconciler", reconciler_id);
+                let text = format!(
+                    "- **{}** on column `{}`{} at `{}`\n",
+                    op_type, column_name, info, timestamp
+                );
+                (info, text)
             }
             "EXTENSION" => {
                 let extender_id = operation.get("Extender").map_or("N/A", |s| s.as_str());
-                format!(" using **{}** extender", extender_id)
+                let info = format!(" using **{}** extender", extender_id);
+                let text = format!(
+                    "- **{}** on column `{}`{} at `{}`\n",
+                    op_type, column_name, info, timestamp
+                );
+                (info, text)
             }
-            _ => String::new(),
+            "MODIFICATION" => {
+                let modifier_name = operation.get("Modifier").map_or("N/A", |s| s.as_str());
+                let info = format!(" using **{}** modifier", modifier_name);
+                let text = format!(
+                    "- **{}** on column `{}`{} at `{}`\n",
+                    op_type, column_name, info, timestamp
+                );
+                (info, text)
+            }
+            "EXPORT" => {
+                // For EXPORT, parse the format from AdditionalData
+                let format = if let Some(additional_data_str) = operation.get("AdditionalData") {
+                    if let Some(additional_data) = parse_json(additional_data_str) {
+                        additional_data
+                            .get("format")
+                            .and_then(|f| f.as_str())
+                            .unwrap_or("UNKNOWN")
+                            .to_uppercase()
+                    } else {
+                        "UNKNOWN".to_string()
+                    }
+                } else {
+                    "UNKNOWN".to_string()
+                };
+                let text = format!("- **{}** as **{}** at `{}`\n", op_type, format, timestamp);
+                (String::new(), text)
+            }
+            "PROPAGATE_TYPE" => {
+                let text = format!(
+                    "- **{}** on column `{}` at `{}`\n",
+                    op_type, column_name, timestamp
+                );
+                (String::new(), text)
+            }
+            _ => {
+                let text = format!(
+                    "- **{}** on column `{}` at `{}`\n",
+                    op_type, column_name, timestamp
+                );
+                (String::new(), text)
+            }
         };
 
-        summary_lines.push(format!(
-            "- **{}** on column `{}`{} at `{}`\n",
-            op_type, column_name, tool_info, timestamp
-        ));
+        summary_lines.push(display_text);
     }
 
     cells.push(Cell::Markdown {

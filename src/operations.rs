@@ -125,13 +125,6 @@ fn get_extension_key(operation: &HashMap<String, String>) -> String {
     format!("{}:{}:{}", column_name, extender, additional_data)
 }
 
-fn get_modification_key(operation: &HashMap<String, String>) -> String {
-    let column_name = operation.get("ColumnName").map_or("", |v| v);
-    let modifier = operation.get("Modifier").map_or("", |v| v);
-    let additional_data = operation.get("AdditionalData").map_or("", |v| v);
-    format!("{}:{}:{}", column_name, modifier, additional_data)
-}
-
 pub fn sort_operations_by_timestamp(
     operations: Vec<HashMap<String, String>>,
 ) -> Vec<HashMap<String, String>> {
@@ -191,11 +184,13 @@ pub fn process_operations(
                     // There's an extension in between, keep this new reconciliation
                     filtered_operations.push(op);
                 } else {
-                    // No extension in between, skip this duplicate reconciliation
+                    // No extension in between, replace the previous reconciliation with this one
                     println!(
-                        "Skipping reconciliation for column: {} at timestamp: {} (no extension in between)",
+                        "Replacing reconciliation for column: {} at timestamp: {} (no extension in between)",
                         col_name, timestamp
                     );
+                    filtered_operations.remove(last_recon_idx);
+                    filtered_operations.push(op);
                 }
             } else {
                 // First reconciliation for this column, keep it
@@ -229,30 +224,27 @@ pub fn process_operations(
                 filtered_operations.push(op);
             }
         } else if operation_type == "MODIFICATION" {
-            // Check if the last operation on this column is an identical modification
-            let last_op_on_column = filtered_operations
+            // Find the last modification for this column
+            let last_modification_index = filtered_operations
                 .iter()
+                .enumerate()
                 .rev()
-                .find(|existing_op| existing_op.get("ColumnName") == Some(&col_name));
+                .find(|(_, existing_op)| {
+                    existing_op.get("OpType") == Some(&"MODIFICATION".to_string())
+                        && existing_op.get("ColumnName") == Some(&col_name)
+                })
+                .map(|(index, _)| index);
 
-            if let Some(last_op) = last_op_on_column {
-                let modification_key = get_modification_key(&op);
-                let last_modification_key = get_modification_key(last_op);
-
-                if last_op.get("OpType") == Some(&"MODIFICATION".to_string())
-                    && modification_key == last_modification_key
-                {
-                    // Identical modification operation, skip it
-                    println!(
-                        "Skipping identical modification for column: {} at timestamp: {}",
-                        col_name, timestamp
-                    );
-                } else {
-                    // Different operation or different modification, keep it
-                    filtered_operations.push(op);
-                }
+            if let Some(last_mod_idx) = last_modification_index {
+                // Replace the previous modification with this one (keep only the last)
+                println!(
+                    "Replacing modification for column: {} at timestamp: {}",
+                    col_name, timestamp
+                );
+                filtered_operations.remove(last_mod_idx);
+                filtered_operations.push(op);
             } else {
-                // First operation on this column, keep it
+                // First modification for this column, keep it
                 filtered_operations.push(op);
             }
         } else if operation_type == "EXPORT" {
