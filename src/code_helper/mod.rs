@@ -201,6 +201,9 @@ except Exception as e:
 
 const BASE_PROPAGATION_OPERATION: &str = r#"
 try:
+    # Fetch fresh table data from backend to ensure we have the latest state
+    table_data = table_manager.get_table(dataset_id, table_id)
+
     type_obj = __TYPE_TO_PROPAGATE__
     propagated_column = '__COL_TO_PROPAGATE__'
 
