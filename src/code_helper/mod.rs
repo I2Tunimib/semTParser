@@ -105,16 +105,6 @@ else:
     filename = get_input_with_default("Enter path to CSV file or press Enter to keep default", "__TABLE_PATH__")
 df = pd.read_csv(filename)
 
-columns_to_delete = [__COLUMNS_TO_DELETE__]
-if columns_to_delete and columns_to_delete != ['']:
-    for col in columns_to_delete:
-        if col in df.columns:
-            df = df.drop(columns=[col])
-            print(f"Deleted column: {col}")
-        else:
-            print(f"Column '{col}' not found in table")
-    print(f"Columns deleted: {[col for col in columns_to_delete if col in df.columns]}")
-
 table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
 print(f"Table loaded successfully: {message}")
@@ -125,6 +115,8 @@ try:
 except Exception as e:
     print(f"Could not display DataFrame head: {e}")
     print(df.head().to_string())
+
+
 "#;
 
 const BASE_NOTEBOOK_DATASET_LOAD_DATAFRAME: &str = r#"
@@ -136,16 +128,6 @@ table_name = get_input_with_default("Enter table_name or press Enter to keep def
 filename = get_input_with_default("Enter path to CSV file or press Enter to keep default", "__TABLE_PATH__")
 df = pd.read_csv(filename)
 
-columns_to_delete = [__COLUMNS_TO_DELETE__]
-if columns_to_delete and columns_to_delete != ['']:
-    for col in columns_to_delete:
-        if col in df.columns:
-            df = df.drop(columns=[col])
-            print(f"Deleted column: {col}")
-        else:
-            print(f"Column '{col}' not found in table")
-    print(f"Columns deleted: {[col for col in columns_to_delete if col in df.columns]}")
-
 table_id, message, table_data = table_manager.add_table(dataset_id, df, table_name)
 
 print(f"Table loaded successfully: {message}")
@@ -156,6 +138,8 @@ try:
 except Exception as e:
     print(f"Could not display DataFrame head: {e}")
     print(df.head().to_string())
+
+
 "#;
 
 const BASE_RECONCILE_OPERATION: &str = r#"

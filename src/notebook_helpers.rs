@@ -242,6 +242,10 @@ pub fn create_notebook(
         .iter()
         .any(|op| op.get("OpType") == Some(&"EXPORT".to_string()));
 
+    // Defer actual export code generation until after column deletions
+    // We will collect EXPORT operations here and append them after the deletion cell
+    let mut deferred_exports: Vec<(serde_json::Value, HashMap<String, String>)> = Vec::new();
+
     for (index, operation) in operations.iter().enumerate() {
         let operation_type = operation.get("OpType").unwrap();
 
@@ -478,60 +482,9 @@ pub fn create_notebook(
                 }
             }
             "EXPORT" => {
-                displayed_operation_counter += 1; // Increment counter for displayed operations
-
-                // Handle export operation
-                if let Some(additional_data_str) = operation.get("AdditionalData") {
-                    if let Some(additional_data) = parse_json(additional_data_str) {
-                        if let Some(format) = additional_data.get("format").and_then(|f| f.as_str())
-                        {
-                            let output_file = additional_data
-                                .get("outputFile")
-                                .and_then(|f| f.as_str())
-                                .unwrap_or("export_output");
-
-                            if let Some(export_code) =
-                                get_base_export_operation(format, output_file)
-                            {
-                                cells.push(Cell::Markdown {
-                                    id: Uuid::new_v4().to_string(),
-                                    metadata: operation_metadata.clone(),
-                                    source: vec![format!(
-                                        "## Operation {}: Export as {}",
-                                        displayed_operation_counter,
-                                        format.to_uppercase()
-                                    )],
-                                });
-
-                                cells.push(Cell::Code {
-                                    id: Uuid::new_v4().to_string(),
-                                    metadata: operation_metadata,
-                                    source: export_code
-                                        .lines()
-                                        .map(|line| format!("{}\n", line))
-                                        .collect(),
-                                    execution_count: None,
-                                    outputs: vec![],
-                                });
-                                println!(
-                                    "Export operation created successfully for format: {}",
-                                    format
-                                );
-                            } else {
-                                println!(
-                                    "Unsupported export format: {}, skipping export operation",
-                                    format
-                                );
-                            }
-                        } else {
-                            eprintln!("No format specified in EXPORT AdditionalData");
-                        }
-                    } else {
-                        eprintln!("Could not parse AdditionalData for EXPORT operation");
-                    }
-                } else {
-                    eprintln!("No AdditionalData found for EXPORT operation");
-                }
+                // Defer export handling until after column deletion cell is added.
+                // Store metadata and operation map for later processing.
+                deferred_exports.push((operation_metadata.clone(), operation.clone()));
             }
             "MODIFICATION" => {
                 displayed_operation_counter += 1; // Increment counter for displayed operations
@@ -580,6 +533,94 @@ pub fn create_notebook(
                     )],
                 });
             }
+        }
+    }
+
+    // Before adding EXPORT cells, add a deletion cell (if any) so deletions are executed
+    // as the last operation before exports.
+    if let Some(ref cols) = deleted_columns {
+        if !cols.is_empty() {
+            // Build python source for deletion block
+            let cols_py = cols
+                .iter()
+                .map(|c| format!("\"{}\"", c))
+                .collect::<Vec<String>>()
+                .join(", ");
+
+            let deletion_source = format!(
+                "columns_to_delete = [{}]
+if columns_to_delete and columns_to_delete != ['']:
+    for col in columns_to_delete:
+        if col in df.columns:
+            df = df.drop(columns=[col])
+            print(f\"Deleted column: {{col}}\")
+        else:
+            print(f\"Column '{{col}}' not found in table\")
+    print(f\"Columns deleted: {{[col for col in columns_to_delete if col in df.columns]}}\")",
+                cols_py
+            );
+
+            cells.push(Cell::Code {
+                id: Uuid::new_v4().to_string(),
+                metadata: serde_json::json!({ "semtparser": { "operation_type": "DELETE_COLUMNS" } }),
+                source: deletion_source.lines().map(|line| format!("{}\n", line)).collect(),
+                execution_count: None,
+                outputs: vec![],
+            });
+        }
+    }
+
+    // Now append deferred EXPORT operations (they will run after the deletion cell)
+    for (meta, op_map) in deferred_exports.into_iter() {
+        if let Some(additional_data_str) = op_map.get("AdditionalData") {
+            if let Some(additional_data) = parse_json(additional_data_str) {
+                if let Some(format) = additional_data.get("format").and_then(|f| f.as_str()) {
+                    let output_file = additional_data
+                        .get("outputFile")
+                        .and_then(|f| f.as_str())
+                        .unwrap_or("export_output");
+
+                    if let Some(export_code) = get_base_export_operation(format, output_file) {
+                        displayed_operation_counter += 1;
+
+                        cells.push(Cell::Markdown {
+                            id: Uuid::new_v4().to_string(),
+                            metadata: meta.clone(),
+                            source: vec![format!(
+                                "## Operation {}: Export as {}",
+                                displayed_operation_counter,
+                                format.to_uppercase()
+                            )],
+                        });
+
+                        cells.push(Cell::Code {
+                            id: Uuid::new_v4().to_string(),
+                            metadata: meta,
+                            source: export_code
+                                .lines()
+                                .map(|line| format!("{}\n", line))
+                                .collect(),
+                            execution_count: None,
+                            outputs: vec![],
+                        });
+                        println!(
+                            "Export operation created successfully for format: {}",
+                            format
+                        );
+                    } else {
+                        println!(
+                            "Unsupported export format: {}, skipping export operation",
+                            format
+                        );
+                    }
+                } else {
+                    eprintln!("No format specified in EXPORT AdditionalData");
+                }
+            } else {
+                eprintln!("Could not parse AdditionalData for EXPORT operation");
+            }
+        } else {
+            eprintln!("No AdditionalData found for EXPORT operation");
         }
     }
 
