@@ -224,29 +224,12 @@ pub fn process_operations(
                 filtered_operations.push(op);
             }
         } else if operation_type == "MODIFICATION" {
-            // Find the last modification for this column
-            let last_modification_index = filtered_operations
-                .iter()
-                .enumerate()
-                .rev()
-                .find(|(_, existing_op)| {
-                    existing_op.get("OpType") == Some(&"MODIFICATION".to_string())
-                        && existing_op.get("ColumnName") == Some(&col_name)
-                })
-                .map(|(index, _)| index);
-
-            if let Some(last_mod_idx) = last_modification_index {
-                // Replace the previous modification with this one (keep only the last)
-                println!(
-                    "Replacing modification for column: {} at timestamp: {}",
-                    col_name, timestamp
-                );
-                filtered_operations.remove(last_mod_idx);
-                filtered_operations.push(op);
-            } else {
-                // First modification for this column, keep it
-                filtered_operations.push(op);
-            }
+            // Keep all modifications for this column instead of removing previous ones
+            println!(
+                "Keeping modification for column: {} at timestamp: {}",
+                col_name, timestamp
+            );
+            filtered_operations.push(op);
         } else if operation_type == "EXPORT" {
             // Check if the last operation is an identical EXPORT
             let last_export = filtered_operations
