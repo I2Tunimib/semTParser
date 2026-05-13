@@ -8,7 +8,7 @@ use crate::{
         get_base_export_operation, get_base_extension_operation, get_base_modification_operation,
         get_base_notebook_dataset_loader, get_base_notebook_dataset_loader_with_column_deletion,
         get_base_notebook_file_loader_code, get_base_propagation_operation,
-        get_base_reconciliation_operation,
+        get_base_reconciliation_operation, value_to_python,
     },
     operations::{parse_deleted_columns, parse_json},
 };
@@ -386,29 +386,26 @@ pub fn create_notebook(
                     }
                 }
 
-                // Check for dates field and extract date column name for other_params
-                let mut other_params = Vec::new();
-                if let Some(dates) = additional_data.get("dates") {
-                    if let Some(dates_obj) = dates.as_object() {
-                        // Get the first key and extract the third element from its array
-                        if let Some((first_key, first_value)) = dates_obj.iter().next() {
-                            if let Some(date_array) = first_value.as_array() {
-                                if date_array.len() > 2 {
-                                    if let Some(date_column_name) = date_array[2].as_str() {
-                                        other_params.push(format!(
-                                            "\"date_column_name\": \"{}\"",
-                                            date_column_name
-                                        ));
-                                        println!(
-                                            "Found date column name: {} from key: {}",
-                                            date_column_name, first_key
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                // Build other_params from the full AdditionalData object, skipping
+                // keys that are already handled elsewhere (serviceId → extender_id,
+                // items → built from the table, selectedColumns → not needed by library).
+                const SKIP_KEYS: &[&str] = &[
+                    "serviceId",
+                    "items",
+                    "selectedColumns",
+                    "properties",
+                    "property",
+                    "labels",
+                    "weatherParams",
+                ];
+                let other_params: Vec<String> = if let Some(obj) = additional_data.as_object() {
+                    obj.iter()
+                        .filter(|(k, _)| !SKIP_KEYS.contains(&k.as_str()))
+                        .map(|(k, v)| format!("\"{}\": {}", k, value_to_python(v)))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
 
                 let additional_params = if other_params.is_empty() {
                     None

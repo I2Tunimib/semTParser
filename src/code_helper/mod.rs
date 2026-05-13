@@ -488,7 +488,7 @@ pub fn get_base_reconciliation_operation(
     formatted_code
 }
 
-fn value_to_python(value: &Value) -> String {
+pub fn value_to_python(value: &Value) -> String {
     match value {
         Value::Null => "None".to_string(),
         Value::Bool(b) => {
