@@ -89,12 +89,17 @@ pub fn create_reconciliation_operation(
     column_name: &str,
     reconciliator_id: &str,
     additional_columns: Option<Vec<String>>,
+    extra_params: Option<Vec<(String, String)>>,
 ) -> Result<(), Error> {
     let file_path = Path::new(file_path_str);
     let mut file = get_file_writer(file_path)?;
 
-    let formatted_code =
-        get_base_reconciliation_operation(column_name, additional_columns, reconciliator_id);
+    let formatted_code = get_base_reconciliation_operation(
+        column_name,
+        additional_columns,
+        reconciliator_id,
+        extra_params,
+    );
     file.write_all(formatted_code.as_bytes())?;
     Ok(())
 }
@@ -310,43 +315,43 @@ pub fn create_python(
                 let reconciler_id = operation.get("Reconciler").unwrap();
                 let col_name = operation.get("ColumnName").unwrap();
 
-                // Parse additional data to check for additionalColumns
-                let additional_columns =
-                    if let Some(additional_data_str) = operation.get("AdditionalData") {
-                        if let Some(additional_data) = parse_json(additional_data_str) {
-                            if let Some(additional_columns_obj) =
-                                additional_data.get("additionalColumns")
-                            {
-                                if let Some(obj) = additional_columns_obj.as_object() {
-                                    let column_names: Vec<String> =
-                                        obj.keys().map(|k| format!("\"{}\"", k)).collect();
-                                    if !column_names.is_empty() {
-                                        println!(
-                                            "Found additionalColumns in reconciliation: {:?}",
-                                            column_names
-                                        );
-                                        Some(column_names)
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
-                            } else {
-                                None
-                            }
-                        } else {
+                let additional_data_parsed =
+                    operation.get("AdditionalData").and_then(|s| parse_json(s));
+
+                let additional_columns = additional_data_parsed
+                    .as_ref()
+                    .and_then(|d| d.get("additionalColumns"))
+                    .and_then(|v| v.as_object())
+                    .and_then(|obj| {
+                        let names: Vec<String> = obj.keys().map(|k| format!("\"{}\"", k)).collect();
+                        if names.is_empty() {
                             None
+                        } else {
+                            Some(names)
                         }
-                    } else {
-                        None
-                    };
+                    });
+
+                let extra_params = additional_data_parsed.as_ref().and_then(|d| {
+                    let prefix = d.get("prefix").and_then(|v| v.as_str())?;
+                    let ref_col = d
+                        .get("columnToReconcile")
+                        .and_then(|v| v.as_object())
+                        .and_then(|obj| obj.values().next())
+                        .and_then(|v| v.as_array())
+                        .and_then(|arr| arr.get(2))
+                        .and_then(|v| v.as_str())?;
+                    Some(vec![
+                        ("prefix".to_string(), prefix.to_string()),
+                        ("reference_column".to_string(), ref_col.to_string()),
+                    ])
+                });
 
                 let res = create_reconciliation_operation(
                     path.as_str(),
                     col_name,
                     reconciler_id,
                     additional_columns,
+                    extra_params,
                 );
                 match res {
                     Ok(_) => {

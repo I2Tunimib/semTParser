@@ -147,13 +147,13 @@ const BASE_RECONCILE_OPERATION: &str = r#"
 reconciliator_id = "__RECONCILIATOR_ID__"
 optional_columns = [__OPTIONAL_COLUMNS__]
 column_name = "__COLUMN_NAME__"
-try:
+__EXTRA_PARAMS_LINES__try:
     table_data = table_manager.get_table(dataset_id, table_id)
     reconciled_table, backend_payload = reconciliation_manager.reconcile(
         table_data,
         column_name,
         reconciliator_id,
-        optional_columns
+        optional_columns__EXTRA_PARAMS_CALL__
     )
     payload = backend_payload
 
@@ -476,16 +476,36 @@ pub fn get_base_reconciliation_operation(
     column_name: &str,
     additional_columns: Option<Vec<String>>,
     reconciler_id: &str,
+    extra_params: Option<Vec<(String, String)>>,
 ) -> String {
     let additional_columns_str = match additional_columns {
         Some(columns) if !columns.is_empty() => columns.join(", "),
         _ => String::from(""),
     };
-    let formatted_code = BASE_RECONCILE_OPERATION
-        .replace("__RECONCILIATOR_ID__", reconciler_id) // Replace with actual reconciliator ID
+    let (extra_params_lines, extra_params_call) = match extra_params {
+        Some(params) if !params.is_empty() => {
+            let lines = params
+                .iter()
+                .map(|(k, v)| format!("{} = \"{}\"\n", k, v))
+                .collect::<String>();
+            let call = format!(
+                ",\n        extra_params={{{}\n        }}",
+                params
+                    .iter()
+                    .map(|(k, v)| format!("\"{}\":\"{}\"", k, v))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+            (lines + "\n", call)
+        }
+        _ => (String::new(), String::new()),
+    };
+    BASE_RECONCILE_OPERATION
+        .replace("__RECONCILIATOR_ID__", reconciler_id)
         .replace("__COLUMN_NAME__", column_name)
-        .replace("__OPTIONAL_COLUMNS__", &additional_columns_str);
-    formatted_code
+        .replace("__OPTIONAL_COLUMNS__", &additional_columns_str)
+        .replace("__EXTRA_PARAMS_LINES__", &extra_params_lines)
+        .replace("__EXTRA_PARAMS_CALL__", &extra_params_call)
 }
 
 pub fn value_to_python(value: &Value) -> String {
@@ -527,17 +547,83 @@ pub fn get_base_propagation_operation(
     formatted_code
 }
 
+/// Returns true when `v` has the shape  { colName: { rN: [value, [], colName] } }
+/// — i.e. a per-row column-data payload that should be rebuilt from `table_data`
+/// at runtime instead of being hardcoded.
+fn is_col_row_data(v: &Value) -> bool {
+    let outer = match v.as_object() {
+        Some(o) if !o.is_empty() => o,
+        _ => return false,
+    };
+    for inner_val in outer.values() {
+        let inner = match inner_val.as_object() {
+            Some(o) => o,
+            None => return false,
+        };
+        for (row_key, row_val) in inner {
+            // key must be "r" followed by one or more digits
+            let suffix = &row_key[row_key
+                .char_indices()
+                .next()
+                .map_or(0, |(_, c)| c.len_utf8())..];
+            if !row_key.starts_with('r')
+                || suffix.is_empty()
+                || !suffix.chars().all(|c| c.is_ascii_digit())
+            {
+                return false;
+            }
+            // value must be a 3-element array whose third element is a string
+            match row_val.as_array() {
+                Some(arr) if arr.len() == 3 && arr[2].is_string() => {}
+                _ => return false,
+            }
+        }
+    }
+    true
+}
+
+/// Serialise a props object for a modification call.
+/// Fields whose value matches `is_col_row_data` are emitted as a dict
+/// comprehension that reads cell labels from `table_data` at runtime;
+/// every other field is serialised with the normal `value_to_python`.
+fn modification_props_to_python(props: &Value) -> String {
+    let obj = match props.as_object() {
+        Some(o) => o,
+        None => return value_to_python(props),
+    };
+    let items: Vec<String> = obj
+        .iter()
+        .map(|(k, v)| {
+            let v_str = if is_col_row_data(v) {
+                let cols: Vec<String> = v
+                    .as_object()
+                    .unwrap()
+                    .keys()
+                    .map(|c| format!("\"{}\"", c))
+                    .collect();
+                format!(
+                    "{{col: {{row_id: [row_data[\"cells\"][col][\"label\"], [], col] for row_id, row_data in table_data[\"rows\"].items()}} for col in [{}]}}",
+                    cols.join(", ")
+                )
+            } else {
+                value_to_python(v)
+            };
+            format!("\"{}\": {}", k, v_str)
+        })
+        .collect();
+    format!("{{{}}}", items.join(", "))
+}
+
 pub fn get_base_modification_operation(
     column_name: &str,
     modifier_name: &str,
     props: &Value,
 ) -> String {
-    let props_str = value_to_python(props);
-    let formatted_code = BASE_MODIFICATION_OPERATION
+    let props_str = modification_props_to_python(props);
+    BASE_MODIFICATION_OPERATION
         .replace("__COLUMN_NAME__", column_name)
         .replace("__MODIFIER_NAME__", modifier_name)
-        .replace("__MODIFICATION_PROPS__", &props_str);
-    formatted_code
+        .replace("__MODIFICATION_PROPS__", &props_str)
 }
 
 pub fn get_base_export_operation(format: &str, output_file: &str) -> Option<String> {
